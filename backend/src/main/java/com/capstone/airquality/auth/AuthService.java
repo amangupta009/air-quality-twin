@@ -45,6 +45,9 @@ public class AuthService {
 
     /** Login: returns a bearer token if credentials are valid, else null. */
     public String login(String username, String password) {
+        if (username == null || password == null) {
+            return null;
+        }
         UserAccount account = users.get(username);
         if (account == null || !account.passwordHash().equals(hash(password))) {
             return null;

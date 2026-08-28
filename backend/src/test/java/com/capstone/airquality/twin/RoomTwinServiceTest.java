@@ -2,18 +2,24 @@ package com.capstone.airquality.twin;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pure unit test - no Spring context, no database, no MQTT broker.
- * Runs in milliseconds; this is the pattern we will scale up during the
- * integration/testing phase of the capstone.
+ * With occupancy-aware status, every CO2 escalation test must seed occupants.
  */
 class RoomTwinServiceTest {
 
     private final RoomTwinService twin = new RoomTwinService(
             new com.capstone.airquality.config.ThresholdSettings(
                     new com.capstone.airquality.config.ThresholdProperties(1000, 35)));
+
+    private void withPeople(int n) {
+        twin.applyReading("roomX", "occupancy", n, Instant.now());
+    }
 
     @Test
     void statusIsOkWhenNothingReportedYet() {
@@ -22,23 +28,26 @@ class RoomTwinServiceTest {
 
     @Test
     void statusEscalatesToWarningThenAlert() {
-        twin.applyReading("roomX", "co2", 850, java.time.Instant.now());
+        withPeople(30); // alert limit = 420 + 30*15 + 380 = 1250
+        twin.applyReading("roomX", "co2", 1000, Instant.now());
         assertEquals(RoomTwinService.Status.WARNING, twin.statusOf("roomX"));
 
-        twin.applyReading("roomX", "co2", 1100, java.time.Instant.now());
+        twin.applyReading("roomX", "co2", 1300, Instant.now());
         assertEquals(RoomTwinService.Status.ALERT, twin.statusOf("roomX"));
     }
 
     @Test
     void recommendationMentionsVentilationDuringAlert() {
-        twin.applyReading("roomY", "co2", 1200, java.time.Instant.now());
-        String advice = twin.recommendationFor("roomY");
-        org.junit.jupiter.api.Assertions.assertTrue(advice.toLowerCase().contains("ventilation"));
+        withPeople(30);
+        twin.applyReading("roomX", "co2", 1300, Instant.now());
+        String advice = twin.recommendationFor("roomX");
+        assertTrue(advice.toLowerCase().contains("ventilation"));
     }
 
     @Test
     void projectionReturnsZeroWhenAlreadyAboveTarget() {
-        twin.applyReading("roomZ", "co2", 1200, java.time.Instant.now());
-        assertEquals(0, twin.projectMinutesToCo2Threshold("roomZ", null, null, 1000), 0.001);
+        withPeople(30);
+        twin.applyReading("roomX", "co2", 1300, Instant.now());
+        assertEquals(0, twin.projectMinutesToCo2Threshold("roomX", null, null, 1000), 0.001);
     }
 }
