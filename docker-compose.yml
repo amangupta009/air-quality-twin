@@ -1,30 +1,45 @@
 services:
-  # PostgreSQL - system of record (readings, alerts, audit trail, summaries)
   db:
     image: postgres:16-alpine
-    container_name: aq-postgres
+    container_name: aq_db
     environment:
-      POSTGRES_DB: airquality
-      POSTGRES_USER: aq_user
-      POSTGRES_PASSWORD: aq_pass   # local dev only; real deployments use secrets
+      POSTGRES_DB: air_quality
+      POSTGRES_USER: air
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aq_user -d airquality"]
+      test: ["CMD-SHELL", "pg_isready -U air"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 10
 
-  # Mosquitto - the MQTT broker every sensor/simulator publishes through
-  mqtt:
-    image: eclipse-mosquitto:2
-    container_name: aq-mosquitto
+  backend:
+    build: ./backend
+    container_name: aq_backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: air_quality
+      DB_USER: air
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      # MQTT broker reached by simulator; backend mainly consumes DB. Falls back to in-memory if broker down.
+      SPRING_PROFILES_ACTIVE: docker
     ports:
-      - "1883:1883"
-    volumes:
-      - ./mosquitto/config:/mosquitto/config
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: aq_frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
 
 volumes:
-  pgdata:
+  db_data:

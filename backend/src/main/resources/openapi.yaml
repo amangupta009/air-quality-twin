@@ -1,0 +1,252 @@
+openapi: 3.0.3
+info:
+  title: Indoor Air Quality Digital Twin API
+  version: 1.0.0
+  description: |
+    REST/OpenAPI contract for the Air Quality Digital Twin with Ventilation
+    Recommendation Engine. All /api/* endpoints (except /api/auth/login) require
+    a bearer token:  Authorization: Bearer <token>
+    Roles: VIEWER (read), FACILITY_MANAGER (control), ADMIN (calibration/settings).
+servers:
+  - url: http://localhost:8080
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Authenticate and receive a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: Token issued }
+        '401': { description: Invalid credentials }
+
+  /api/auth/logout:
+    post:
+      summary: Invalidate a token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+      responses:
+        '200': { description: Logged out }
+
+  /api/rooms:
+    get:
+      summary: Live status of all rooms from the digital twin
+      responses:
+        '200':
+          description: List of room snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RoomSnapshot' }
+
+  /api/rooms/{roomId}/ventilation:
+    post:
+      summary: Turn ventilation ON/OFF (FACILITY_MANAGER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, actor]
+              properties:
+                action: { type: string, enum: [ON, OFF] }
+                actor: { type: string }
+                note: { type: string }
+      responses:
+        '201': { description: Action logged }
+        '403': { description: Forbidden }
+
+  /api/rooms/{roomId}/occupancy:
+    post:
+      summary: Set manual head-count (FACILITY_MANAGER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [occupants]
+              properties:
+                occupants: { type: integer, minimum: 0, maximum: 500 }
+      responses:
+        '200': { description: Occupancy set }
+
+  /api/rooms/{roomId}/readings:
+    get:
+      summary: Persisted readings for charts/replay (VIEWER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+        - { name: minutes, in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: Time-series readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Reading' }
+
+  /api/rooms/{roomId}/actions:
+    get:
+      summary: Ventilation action audit trail
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Actions }
+
+  /api/rooms/{roomId}/alerts:
+    get:
+      summary: Alert history
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Alerts }
+
+  /api/settings/thresholds:
+    get:
+      summary: Current alert threshold config (VIEWER+)
+      responses:
+        '200': { description: Thresholds }
+    put:
+      summary: Update thresholds (ADMIN)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                co2Ppm: { type: number }
+      responses:
+        '200': { description: Updated }
+
+  /api/calibration:
+    post:
+      summary: Save sensor calibration (ADMIN)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CalibrationRequest' }
+      responses:
+        '200':
+          description: Saved profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalibrationProfile' }
+
+  /api/calibration/{roomId}:
+    get:
+      summary: Calibration history for a room (ADMIN)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Profiles }
+
+  /api/summary/daily/{roomId}:
+    get:
+      summary: Daily exposure summary for a room (VIEWER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+        - { name: date, in: query, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Daily summary }
+
+  /api/replay/{roomId}:
+    get:
+      summary: Event replay timeline (VIEWER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+        - { name: minutes, in: query, schema: { type: integer, default: 60 } }
+      responses:
+        '200': { description: Samples + events }
+
+  /api/simulate/{roomId}:
+    post:
+      summary: What-if scenario simulation (FACILITY_MANAGER+)
+      parameters:
+        - { name: roomId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                occupants: { type: integer }
+                ventilationOn: { type: boolean }
+                targetPpm: { type: number }
+      responses:
+        '200': { description: Prediction }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
+  schemas:
+    RoomSnapshot:
+      type: object
+      properties:
+        roomId: { type: string }
+        roomName: { type: string }
+        co2Ppm: { type: number, nullable: true }
+        pm25: { type: number, nullable: true }
+        occupants: { type: integer, nullable: true }
+        ventilationOn: { type: boolean }
+        status: { type: string, enum: [OK, WARNING, ALERT] }
+        recommendation: { type: string }
+        updatedAt: { type: string, format: date-time }
+
+    Reading:
+      type: object
+      properties:
+        roomId: { type: string }
+        metric: { type: string, enum: [co2, pm25, pm10] }
+        value: { type: number }
+        unit: { type: string }
+        recordedAt: { type: string, format: date-time }
+
+    CalibrationRequest:
+      type: object
+      required: [roomId, metric, calibratedBy]
+      properties:
+        roomId: { type: string }
+        metric: { type: string, enum: [co2, pm25, pm10] }
+        offsetValue: { type: number, default: 0 }
+        scaleValue: { type: number, default: 1 }
+        calibratedBy: { type: string }
+        notes: { type: string }
+
+    CalibrationProfile:
+      type: object
+      properties:
+        id: { type: integer }
+        roomId: { type: string }
+        metric: { type: string }
+        offsetValue: { type: number }
+        scaleValue: { type: number }
+        calibratedBy: { type: string }
+        calibratedAt: { type: string, format: date-time }
+        notes: { type: string }
