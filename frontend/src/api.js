@@ -106,3 +106,15 @@ export function fetchDailySummary(roomId, date = '') {
   const q = date ? `?date=${date}` : ''
   return fetch(`/api/summary/daily/${roomId}${q}`).then(handle)
 }
+
+export function fetchReplay(roomId, minutes = 60) {
+  return fetch(`/api/replay/${roomId}?minutes=${minutes}`).then(handle)
+}
+
+export function simulateScenario(roomId, occupants, ventilationOn, targetPpm = null) {
+  return fetch(`/api/simulate/${roomId}`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ occupants, ventilationOn, targetPpm }),
+  }).then(handle)
+}

@@ -385,3 +385,25 @@ footer button:disabled { background: #c3cbd4; cursor: default; }
 .page.dark .calib-form label { color: #cbd5e1; }
 .page.dark .calib-form input, .page.dark .calib-form select { background: #1e293b; color: #e5e7eb; border-color: #334155; }
 .page.dark .panel code { background: #1e293b; }
+
+/* Innovation panel */
+.panel.innovation { width: min(720px, 100%); }
+.innovation h4 { margin: 0.6rem 0 0.4rem; }
+.rep-controls { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.6rem; flex-wrap: wrap; }
+.rep-controls label { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.3rem; }
+.rep-controls select, .sim-form select, .sim-form input { padding: 0.4rem; border: 1px solid #c3cbd4; border-radius: 6px; }
+.rep-controls button, .sim-form button { flex: none; padding: 0.4rem 0.8rem; }
+.rep-chart { min-height: 160px; background: #f8fafc; border-radius: 8px; padding: 0.6rem; }
+.rep-line { display: flex; align-items: flex-end; gap: 1px; height: 130px; }
+.rep-bar { width: 3px; background: #2563eb; border-radius: 1px 1px 0 0; }
+.rep-events { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+.ev { font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 999px; }
+.ev.alert { background: #fee2e2; color: #b91c1c; }
+.ev.ventilation { background: #ffedd5; color: #c2410c; }
+.sim-form { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.sim-form label { display: flex; flex-direction: column; font-size: 0.8rem; font-weight: 600; gap: 0.2rem; }
+.sim-result { margin-top: 0.6rem; background: #eff6ff; border-left: 4px solid #2563eb; padding: 0.5rem 0.7rem; border-radius: 6px; }
+.sim-result p { margin: 0.2rem 0; }
+.page.dark .rep-chart { background: #1e293b; }
+.page.dark .sim-result { background: #16233c; }
+.page.dark .rep-controls select, .page.dark .sim-form select, .page.dark .sim-form input { background: #1e293b; color: #e5e7eb; border-color: #334155; }

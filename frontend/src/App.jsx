@@ -4,6 +4,7 @@ import { playAlertBeep } from './sound'
 import LoginGate from './components/LoginGate.jsx'
 import RoomCard from './components/RoomCard.jsx'
 import CalibrationScreen from './components/CalibrationScreen.jsx'
+import InnovationPanel from './components/InnovationPanel.jsx'
 
 function worstStatus(rooms) {
   if (rooms.some((r) => r.status === 'ALERT')) return 'ALERT'
@@ -25,6 +26,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const seeded = useRef(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [showInnovation, setShowInnovation] = useState(false)
 
   const isAdmin = user?.role === 'ADMIN'
   const canControl = user?.role === 'ADMIN' || user?.role === 'FACILITY_MANAGER'
@@ -145,14 +147,17 @@ export default function App() {
         <span className="chip">{user.username} · {user.role}</span>
         <span className="spacer" />
         <button className="ghost" onClick={toggleTheme}>{dark ? 'Light mode' : 'Dark mode'}</button>
-        {isAdmin && <button className="ghost" onClick={() => setShowAdmin(!showAdmin)}>{showAdmin ? 'Dashboard' : 'Admin'}</button>}
+        {isAdmin && <button className="ghost" onClick={() => { setShowAdmin(!showAdmin); setShowInnovation(false) }}>{showAdmin ? 'Dashboard' : 'Admin'}</button>}
+        {canControl && <button className="ghost" onClick={() => { setShowInnovation(!showInnovation); setShowAdmin(false) }}>{showInnovation ? 'Dashboard' : 'Replay/Sim'}</button>}
         <button className="ghost" onClick={handleLogout}>Logout</button>
       </div>
 
       {error && <p className="error">Backend unreachable: {error}</p>}
 
-      {isAdmin && showAdmin ? (
+      {isAdmin && showAdmin && rooms[0] ? (
         <CalibrationScreen rooms={rooms} user={user} />
+      ) : showInnovation && rooms[0] ? (
+        <InnovationPanel room={rooms[0]} user={user} />
       ) : (
         <>
           <div className="big-status">{STATUS_WORD[worstStatus(rooms)]}</div>
