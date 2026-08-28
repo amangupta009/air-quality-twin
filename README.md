@@ -38,33 +38,58 @@ Rules enforced by the code:
 
 ## Module coverage (7 mandatory)
 
-1. Sensor station → simulator + `sensor/` package (swap-ready for ESP32)
+1. Sensor station → simulator + `sensor/` package + real ESP32 firmware (`esp32/`)
 2. Room dashboard → `frontend/`
 3. Occupancy context → `occupancy` metric + `OccupancySnapshot`
 4. Threshold alerts → `ReadingIngestService.evaluateThreshold` + `AlertEvent`
 5. Ventilation action log → `POST /api/rooms/{id}/ventilation` + `VentilationAction`
-6. Daily exposure summary → `DailyExposureSummary` (rollup job in later phase)
-7. Calibration screen → `CalibrationProfile` applied on ingest (UI later phase)
+6. Daily exposure summary → `DailyExposureSummary` + rollup service + UI
+7. Calibration screen → `CalibrationProfile` + ADMIN UI with provenance
 
-Innovation layer: live twin (`RoomTwinService`), replay (planned, data already
-persisted), scenario simulation (`projectMinutesToCo2Threshold` seed).
+Innovation layer: live twin (`RoomTwinService` + dynamic occupancy-aware
+status), event replay timeline, and scenario simulation
+(`projectMinutesToCo2Threshold`).
+
+## Trust & audit layer
+
+- Role-based auth (VIEWER / FACILITY_MANAGER / ADMIN) enforced on every
+  `/api/**` (see `backend/.../auth/` + `docs/02-design-pack.md` threat model).
+- Ventilation actions, occupancy overrides, and calibrations always record
+  who/what/when.
+
+## One-command full stack (no Docker required)
+
+```bash
+bash scripts/start-all.sh
+# Dashboard : http://localhost:5173
+# API       : http://localhost:8080/api/rooms
+```
+
+## Engineering evidence
+
+- 22 automated unit tests (`cd backend && ./mvnw test`).
+- CI/CD: `.github/workflows/ci.yml` (backend test, frontend build, docker).
+- API contract: `backend/src/main/resources/openapi.yaml`.
+- Docs: `docs/` (brief, design, data/hardware, evidence, evaluation,
+  baseline comparison, failure/security, guides, model card, demo script).
 
 ## Quickstart (local dev)
 
-Prerequisites: Docker (with your user in the `docker` group), Java 21+, Node 20+.
+Easiest (starts PostgreSQL + Mosquitto + backend + frontend, no Docker/root):
 
 ```bash
-# 1. Infrastructure: PostgreSQL + Mosquitto
-docker compose up -d
+bash scripts/start-all.sh        # → http://localhost:5173
+```
 
-# 2. Backend (built-in simulator active by default)
-cd backend && ./mvnw spring-boot:run
+Or piece-by-piece with Docker: backstage infra via `docker-compose.yml`, then
+backend `./mvnw spring-boot:run`, then frontend `npm run dev`.
 
-# 3. Watch it work: readings arrive every 5s; CO2 climbs with occupancy
+Default logins (dev only): `viewer/viewer123`, `manager/manager123`,
+`admin/admin123`. Full walkthrough in `docs/08-user-admin-guide.md`.
+
+```bash
+# Watch readings arrive every 5s; CO2 climbs with occupancy
 curl http://localhost:8080/api/rooms
-
-# 4. Frontend
-cd frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
 Useful variations:
