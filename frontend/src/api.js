@@ -1,11 +1,49 @@
 // Thin wrapper around fetch so components stay readable.
 // All data flows through the backend REST API - never directly to the DB.
 
+let authToken = localStorage.getItem('token') || ''
+
+export function setAuthToken(token) {
+  authToken = token
+  if (token) localStorage.setItem('token', token)
+  else localStorage.removeItem('token')
+}
+
+export function getAuthToken() {
+  return authToken
+}
+
 async function handle(response) {
   if (!response.ok) {
-    throw new Error(`API ${response.status}: ${response.statusText}`)
+    const msg = await response.text().catch(() => '')
+    throw new Error(`API ${response.status}: ${msg || response.statusText}`)
   }
   return response.json()
+}
+
+function authHeaders(body) {
+  const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  return headers
+}
+
+export function login(username, password) {
+  return fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  }).then(handle)
+}
+
+export function logout() {
+  if (authToken) {
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ token: authToken }),
+    }).catch(() => {})
+  }
+  setAuthToken('')
 }
 
 export function fetchRooms() {
@@ -15,7 +53,7 @@ export function fetchRooms() {
 export function setVentilation(roomId, action, actor = 'facility-manager', note = '') {
   return fetch(`/api/rooms/${roomId}/ventilation`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ action, actor, note }),
   }).then(handle)
 }
@@ -23,7 +61,7 @@ export function setVentilation(roomId, action, actor = 'facility-manager', note 
 export function renameRoom(roomId, name) {
   return fetch(`/api/rooms/${roomId}/name`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ name }),
   }).then(handle)
 }
@@ -31,16 +69,8 @@ export function renameRoom(roomId, name) {
 export function setOccupancy(roomId, occupants) {
   return fetch(`/api/rooms/${roomId}/occupancy`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ occupants }),
-  }).then(handle)
-}
-
-export function setCo2(roomId, co2Ppm) {
-  return fetch(`/api/rooms/${roomId}/co2`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ co2Ppm }),
   }).then(handle)
 }
 
@@ -55,7 +85,7 @@ export function fetchThresholds() {
 export function updateThresholds(co2Ppm) {
   return fetch('/api/settings/thresholds', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ co2Ppm }),
   }).then(handle)
 }

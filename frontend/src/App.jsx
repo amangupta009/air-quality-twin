@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { fetchRooms, fetchReadings, setVentilation, renameRoom, setOccupancy } from './api'
+import { fetchRooms, fetchReadings, setVentilation, renameRoom, setOccupancy, login, logout, setAuthToken } from './api'
 import { playAlertBeep } from './sound'
 import LoginGate from './components/LoginGate.jsx'
 import RoomCard from './components/RoomCard.jsx'
@@ -14,15 +14,21 @@ const STATUS_WORD = { OK: 'SAFE', WARNING: 'WARNING', ALERT: 'ALERT' }
 const MAX_POINTS = 120
 
 export default function App() {
-  const [operator, setOperator] = useState(() => localStorage.getItem('operator') || '')
+  const [user, setUser] = useState(() => {
+    const stored = localStorage.getItem('user')
+    return stored ? JSON.parse(stored) : null
+  })
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark')
   const [rooms, setRooms] = useState([])
   const [points, setPoints] = useState({})
   const [error, setError] = useState(null)
   const seeded = useRef(false)
 
+  const isAdmin = user?.role === 'ADMIN'
+  const canControl = user?.role === 'ADMIN' || user?.role === 'FACILITY_MANAGER'
+
   useEffect(() => {
-    if (!operator) return
+    if (!user) return
 
     function absorb(data) {
       setRooms(data)
@@ -65,7 +71,7 @@ export default function App() {
     load()
     const timer = setInterval(load, 5000)
     return () => clearInterval(timer)
-  }, [operator])
+  }, [user])
 
   const pageStatus = worstStatus(rooms).toLowerCase()
   const prevStatus = useRef('ok')
@@ -76,30 +82,31 @@ export default function App() {
     prevStatus.current = pageStatus
   }, [pageStatus])
 
-  if (!operator) {
-    return (
-      <LoginGate
-        onEnter={async ({ name, roomName, people }) => {
-          localStorage.setItem('operator', name)
-          setOperator(name)
-          try {
-            const rs = await fetchRooms()
-            if (rs.length) {
-              await renameRoom(rs[0].roomId, roomName)
-              await setOccupancy(rs[0].roomId, people)
-              setRooms(await fetchRooms())
-            }
-          } catch (e) {
-            setError(e.message)
-          }
-        }}
-      />
-    )
+  async function handleLogin(username, password) {
+    const res = await login(username, password)
+    setAuthToken(res.token)
+    const session = { username: res.username, role: res.role, token: res.token }
+    localStorage.setItem('user', JSON.stringify(session))
+    setUser(session)
+    return res
+  }
+
+  function handleLogout() {
+    logout()
+    localStorage.removeItem('user')
+    setUser(null)
+    setRooms([])
+    setPoints({})
+    seeded.current = false
+  }
+
+  if (!user) {
+    return <LoginGate onLogin={handleLogin} />
   }
 
   async function handleVentilation(roomId, action) {
     try {
-      await setVentilation(roomId, action, operator, 'from dashboard')
+      await setVentilation(roomId, action, user.username, 'from dashboard')
       setRooms(await fetchRooms())
     } catch (e) {
       setError(e.message)
@@ -115,6 +122,15 @@ export default function App() {
     }
   }
 
+  async function handleRename(roomId, name) {
+    try {
+      await renameRoom(roomId, name)
+      setRooms(await fetchRooms())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   function toggleTheme() {
     const next = !dark
     setDark(next)
@@ -124,12 +140,11 @@ export default function App() {
   return (
     <main className={`page ${pageStatus} ${dark ? 'dark' : ''}`}>
       <div className="topbar">
-        <span className="chip">Operator: <b>{operator}</b></span>
+        <span className="chip">{user.username} · {user.role}</span>
         <span className="spacer" />
         <button className="ghost" onClick={toggleTheme}>{dark ? 'Light mode' : 'Dark mode'}</button>
-        <button className="ghost" onClick={() => { localStorage.removeItem('operator'); setOperator('') }}>
-          Logout
-        </button>
+        {isAdmin && <button className="ghost">Admin</button>}
+        <button className="ghost" onClick={handleLogout}>Logout</button>
       </div>
 
       {error && <p className="error">Backend unreachable: {error}</p>}
@@ -141,8 +156,10 @@ export default function App() {
             key={room.roomId}
             room={room}
             points={points[room.roomId] || []}
+            canControl={canControl}
             onVentilation={handleVentilation}
             onOccupancy={handleOccupancy}
+            onRename={handleRename}
           />
         ))}
         {!rooms.length && !error && <p>Waiting for data…</p>}

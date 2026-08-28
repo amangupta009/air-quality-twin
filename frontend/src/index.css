@@ -130,6 +130,26 @@ button.ghost:hover { background: rgb(255 255 255 / 0.3); }
 
 .login-box button:disabled { background: #c3cbd4; }
 
+.login-error {
+  color: #d64545;
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.login-hint {
+  margin-top: 1.1rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.login-hint p {
+  margin: 0.15rem 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+.login-hint p:first-child { font-weight: 700; color: #55606c; }
+
 /* Cards */
 .grid {
   display: flex;

@@ -1,9 +1,24 @@
 import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
-export default function RoomCard({ room, points, onVentilation, onOccupancy }) {
+export default function RoomCard({ room, points, canControl, onVentilation, onOccupancy, onRename }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
   const [occDraft, setOccDraft] = useState('')
   const chartData = points.map((p) => ({ time: p.time, co2: p.co2 }))
+
+  function startEdit() {
+    setDraft(room.roomName ?? room.roomId)
+    setEditing(true)
+  }
+
+  function saveName(e) {
+    e.preventDefault()
+    if (draft.trim().length >= 2) {
+      onRename(room.roomId, draft.trim())
+      setEditing(false)
+    }
+  }
 
   function submitOccupancy(e) {
     e.preventDefault()
@@ -17,7 +32,18 @@ export default function RoomCard({ room, points, onVentilation, onOccupancy }) {
   return (
     <section className={`card ${room.status.toLowerCase()}`}>
       <header className="card-head">
-        <h2>{room.roomName ?? room.roomId}</h2>
+        {editing ? (
+          <form className="rename-form" onSubmit={saveName}>
+            <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={saveName} />
+          </form>
+        ) : (
+          <>
+            <h2>{room.roomName ?? room.roomId}</h2>
+            {canControl && (
+              <button className="edit-btn" title="Rename room" onClick={startEdit}>✏️</button>
+            )}
+          </>
+        )}
         <span className="occ-chip">{room.occupants ?? '—'} inside</span>
       </header>
 
@@ -62,18 +88,17 @@ export default function RoomCard({ room, points, onVentilation, onOccupancy }) {
             placeholder={room.occupants ?? 0}
             value={occDraft}
             onChange={(e) => setOccDraft(e.target.value)}
+            disabled={!canControl}
           />
-          <button type="submit" disabled={occDraft === ''}>Set</button>
+          <button type="submit" disabled={occDraft === '' || !canControl}>Set</button>
         </form>
       </div>
 
       <footer>
-        <button onClick={() => onVentilation(room.roomId, 'ON')} disabled={room.ventilationOn}>
-          Ventilation ON
-        </button>
-        <button onClick={() => onVentilation(room.roomId, 'OFF')} disabled={!room.ventilationOn}>
-          Ventilation OFF
-        </button>
+        <button onClick={() => onVentilation(room.roomId, 'ON')}
+          disabled={room.ventilationOn || !canControl}>Ventilation ON</button>
+        <button onClick={() => onVentilation(room.roomId, 'OFF')}
+          disabled={!room.ventilationOn || !canControl}>Ventilation OFF</button>
       </footer>
     </section>
   )
