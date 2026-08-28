@@ -1,0 +1,322 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 0.9rem 1.2rem;
+  color: #fff;
+  transition: background 0.4s;
+}
+
+.page.ok {
+  background: #1e8e4e;
+}
+
+.page.warning {
+  animation: blink-green 1s infinite;
+}
+
+.page.alert {
+  animation: blink-red 0.8s infinite;
+}
+
+@keyframes blink-green {
+  0%, 100% { background: #2ecc71; }
+  50%      { background: #0e4429; }
+}
+
+@keyframes blink-red {
+  0%, 100% { background: #e74c3c; }
+  50%      { background: #4a0e0a; }
+}
+
+.big-status {
+  text-align: center;
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin: 0.15rem 0 0.8rem;
+  text-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.45rem;
+}
+
+.topbar .spacer { flex: 1; }
+
+.chip {
+  background: rgb(255 255 255 / 0.18);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+button.ghost {
+  background: rgb(255 255 255 / 0.18);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  flex: none;
+}
+
+button.ghost:hover { background: rgb(255 255 255 / 0.3); }
+
+/* Login screen */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0b3d2e, #0d9488);
+}
+
+.login-box {
+  background: #fff;
+  color: #17202a;
+  border-radius: 16px;
+  padding: 2.5rem 3rem;
+  width: min(380px, 92vw);
+  text-align: center;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
+}
+
+.login-box h1 { font-size: 1.35rem; margin: 0 0 0.4rem; }
+.login-box p { color: #66707a; font-size: 0.9rem; margin: 0 0 1.25rem; }
+
+.login-box label {
+  display: block;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 0.85rem;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #c3cbd4;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-top: 0.3rem;
+}
+
+.login-box button {
+  width: 100%;
+  padding: 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: #0d9488;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.login-box button:disabled { background: #c3cbd4; }
+
+/* Cards */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+}
+
+.card {
+  background: #fff;
+  color: #1c2733;
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
+  width: min(720px, 100%);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 0.3);
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #065f46, #0d9488);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.5rem 0.9rem;
+}
+
+.card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* Metric tiles — BIGGER */
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  margin: 0.75rem 0;
+}
+
+.tile {
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 72px;
+}
+
+.tile .label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #55606c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tile .value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #17202a;
+}
+
+.t-co2   { background: #e8f1fd; border-top: 5px solid #2563eb; }
+.t-pm    { background: #f3e8fd; border-top: 5px solid #7c3aed; }
+.t-vent  { background: #fff4e5; border-top: 5px solid #ea580c; }
+.t-status{ background: #fdecec; border-top: 5px solid #d64545; }
+
+.occ-chip {
+  font-size: 0.8rem;
+  background: rgb(255 255 255 / 0.16);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+}
+
+/* Live CO2 chart */
+.chart-box {
+  height: 110px;
+  margin-bottom: 0.55rem;
+}
+
+.recommendation {
+  margin: 0 0 0.65rem;
+  background: #f1f5f9;
+  border-left: 5px solid #64748b;
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  color: #333;
+}
+
+/* People input — BIGGER */
+.occupancy-row {
+  margin-bottom: 0.6rem;
+}
+
+.occupancy-form {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+}
+
+.occ-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.occupancy-form input {
+  width: 100px;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid #c3cbd4;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.occupancy-form input:focus {
+  border-color: #0d9488;
+  outline: none;
+}
+
+.occupancy-form button {
+  flex: none;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+footer {
+  display: flex;
+  gap: 0.75rem;
+}
+
+footer button {
+  flex: 1;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+footer button:hover:not(:disabled) { background: #1d4fd7; }
+footer button:disabled { background: #c3cbd4; cursor: default; }
+
+.error {
+  max-width: 760px;
+  margin: 0 auto 1rem;
+  background: #fdecec;
+  border: 1px solid #d64545;
+  color: #8f2020;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+/* Dark mode */
+.page.dark .card        { background: #0f172a; color: #e5e7eb; }
+.page.dark .card-head   { background: #1e293b; }
+.page.dark .t-co2       { background: #16233c; }
+.page.dark .t-pm        { background: #241a3d; }
+.page.dark .t-vent      { background: #3a2a14; }
+.page.dark .t-status    { background: #3a1414; }
+.page.dark .tile .value { color: #f1f5f9; }
+.page.dark .tile .label { color: #94a3b8; }
+.page.dark .recommendation { background: #1e293b; color: #cbd5e1; }
+.page.dark .occupancy-form { background: #1e293b; }
+.page.dark .occ-label   { color: #cbd5e1; }
+.page.dark .occupancy-form input { background: #0f172a; color: #e5e7eb; border-color: #334155; }
+.page.dark footer button { background: #1e40af; }
+.page.dark footer button:hover:not(:disabled) { background: #1d4fd7; }
+
+.rename-form { flex: 1; }
+.rename-form input {
+  width: 100%;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+}

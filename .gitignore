@@ -1,0 +1,32 @@
+# --- Java / Maven / Spring Boot ---
+backend/target/
+*.class
+*.jar
+
+# --- Node / React ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- Environment & secrets (NEVER commit real credentials) ---
+.env
+.env.*
+*.pem
+*.key
+
+# --- IDE / OS noise ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# --- Logs & build output ---
+*.log
+coverage/

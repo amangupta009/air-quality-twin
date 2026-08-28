@@ -1,0 +1,30 @@
+services:
+  # PostgreSQL - system of record (readings, alerts, audit trail, summaries)
+  db:
+    image: postgres:16-alpine
+    container_name: aq-postgres
+    environment:
+      POSTGRES_DB: airquality
+      POSTGRES_USER: aq_user
+      POSTGRES_PASSWORD: aq_pass   # local dev only; real deployments use secrets
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aq_user -d airquality"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Mosquitto - the MQTT broker every sensor/simulator publishes through
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: aq-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+
+volumes:
+  pgdata:
