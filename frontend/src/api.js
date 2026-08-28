@@ -89,3 +89,20 @@ export function updateThresholds(co2Ppm) {
     body: JSON.stringify({ co2Ppm }),
   }).then(handle)
 }
+
+export function fetchCalibration(roomId) {
+  return fetch(`/api/calibration/${roomId}`).then(handle)
+}
+
+export function saveCalibration(data) {
+  return fetch('/api/calibration', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  }).then(handle)
+}
+
+export function fetchDailySummary(roomId, date = '') {
+  const q = date ? `?date=${date}` : ''
+  return fetch(`/api/summary/daily/${roomId}${q}`).then(handle)
+}

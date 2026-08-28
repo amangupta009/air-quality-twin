@@ -1,11 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
+import { fetchDailySummary } from '../api'
 
 export default function RoomCard({ room, points, canControl, onVentilation, onOccupancy, onRename }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [occDraft, setOccDraft] = useState('')
+  const [summary, setSummary] = useState(null)
   const chartData = points.map((p) => ({ time: p.time, co2: p.co2 }))
+
+  useEffect(() => {
+    fetchDailySummary(room.roomId)
+      .then(setSummary)
+      .catch(() => null)
+  }, [room.roomId])
 
   function startEdit() {
     setDraft(room.roomName ?? room.roomId)
@@ -77,6 +85,14 @@ export default function RoomCard({ room, points, canControl, onVentilation, onOc
       </div>
 
       <p className="recommendation">{room.recommendation}</p>
+
+      {summary && (
+        <div className="summary-strip">
+          <span>Avg CO2 <b>{summary.avgCo2Ppm ?? '—'}</b> ppm</span>
+          <span>Max <b>{summary.maxCo2Ppm ?? '—'}</b></span>
+          <span>Above limit <b>{summary.minutesAboveCo2Limit ?? 0}</b> min</span>
+        </div>
+      )}
 
       <div className="occupancy-row">
         <form className="occupancy-form" onSubmit={submitOccupancy}>

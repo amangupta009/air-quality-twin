@@ -316,6 +316,22 @@ footer button:disabled { background: #c3cbd4; cursor: default; }
   border-radius: 6px;
 }
 
+/* Daily exposure summary strip */
+.summary-strip {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.55rem;
+}
+.summary-strip b { color: #065f46; }
+.page.dark .summary-strip { background: #0d2e28; border-color: #065f46; }
+.page.dark .summary-strip b { color: #6ee7b7; }
+
 /* Dark mode */
 .page.dark .card        { background: #0f172a; color: #e5e7eb; }
 .page.dark .card-head   { background: #1e293b; }
@@ -340,3 +356,32 @@ footer button:disabled { background: #c3cbd4; cursor: default; }
   border-radius: 6px;
   font-size: 1.1rem;
 }
+
+/* Calibration panel */
+.panel {
+  background: #fff;
+  color: #1c2733;
+  border-radius: 14px;
+  padding: 1.2rem 1.5rem;
+  width: min(520px, 100%);
+  margin: 0 auto;
+  box-shadow: 0 2px 14px rgb(0 0 0 / 0.3);
+}
+.panel h3 { margin: 0 0 0.2rem; }
+.panel-sub { margin: 0 0 1rem; color: #55606c; font-size: 0.9rem; }
+.panel code { background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 4px; }
+
+.calib-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; }
+.calib-form label { display: flex; flex-direction: column; font-size: 0.85rem; font-weight: 600; color: #444; gap: 0.3rem; }
+.calib-form input, .calib-form select {
+  padding: 0.5rem 0.6rem; border: 1px solid #c3cbd4; border-radius: 6px; font-size: 0.95rem;
+}
+.calib-form label:has(> input[placeholder*="e.g."]) { grid-column: 1 / -1; }
+.calib-form button { grid-column: 1 / -1; padding: 0.6rem; font-size: 1rem; }
+.calib-result { margin-top: 0.7rem; font-weight: 600; }
+
+.page.dark .panel { background: #0f172a; color: #e5e7eb; }
+.page.dark .panel-sub { color: #94a3b8; }
+.page.dark .calib-form label { color: #cbd5e1; }
+.page.dark .calib-form input, .page.dark .calib-form select { background: #1e293b; color: #e5e7eb; border-color: #334155; }
+.page.dark .panel code { background: #1e293b; }

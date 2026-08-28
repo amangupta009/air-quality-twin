@@ -3,6 +3,7 @@ import { fetchRooms, fetchReadings, setVentilation, renameRoom, setOccupancy, lo
 import { playAlertBeep } from './sound'
 import LoginGate from './components/LoginGate.jsx'
 import RoomCard from './components/RoomCard.jsx'
+import CalibrationScreen from './components/CalibrationScreen.jsx'
 
 function worstStatus(rooms) {
   if (rooms.some((r) => r.status === 'ALERT')) return 'ALERT'
@@ -23,6 +24,7 @@ export default function App() {
   const [points, setPoints] = useState({})
   const [error, setError] = useState(null)
   const seeded = useRef(false)
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const isAdmin = user?.role === 'ADMIN'
   const canControl = user?.role === 'ADMIN' || user?.role === 'FACILITY_MANAGER'
@@ -143,27 +145,33 @@ export default function App() {
         <span className="chip">{user.username} · {user.role}</span>
         <span className="spacer" />
         <button className="ghost" onClick={toggleTheme}>{dark ? 'Light mode' : 'Dark mode'}</button>
-        {isAdmin && <button className="ghost">Admin</button>}
+        {isAdmin && <button className="ghost" onClick={() => setShowAdmin(!showAdmin)}>{showAdmin ? 'Dashboard' : 'Admin'}</button>}
         <button className="ghost" onClick={handleLogout}>Logout</button>
       </div>
 
       {error && <p className="error">Backend unreachable: {error}</p>}
-      <div className="big-status">{STATUS_WORD[worstStatus(rooms)]}</div>
 
-      <div className="grid">
-        {rooms.map((room) => (
-          <RoomCard
-            key={room.roomId}
-            room={room}
-            points={points[room.roomId] || []}
-            canControl={canControl}
-            onVentilation={handleVentilation}
-            onOccupancy={handleOccupancy}
-            onRename={handleRename}
-          />
-        ))}
-        {!rooms.length && !error && <p>Waiting for data…</p>}
-      </div>
+      {isAdmin && showAdmin ? (
+        <CalibrationScreen rooms={rooms} user={user} />
+      ) : (
+        <>
+          <div className="big-status">{STATUS_WORD[worstStatus(rooms)]}</div>
+          <div className="grid">
+            {rooms.map((room) => (
+              <RoomCard
+                key={room.roomId}
+                room={room}
+                points={points[room.roomId] || []}
+                canControl={canControl}
+                onVentilation={handleVentilation}
+                onOccupancy={handleOccupancy}
+                onRename={handleRename}
+              />
+            ))}
+            {!rooms.length && !error && <p>Waiting for data…</p>}
+          </div>
+        </>
+      )}
     </main>
   )
 }
