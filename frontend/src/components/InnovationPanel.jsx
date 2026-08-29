@@ -3,7 +3,7 @@ import { fetchReplay, simulateScenario } from '../api'
 
 // The distinguishing contribution: time-travel replay of a room's whole story
 // (CO2 line + alert/ventilation events) and what-if scenario simulation.
-export default function InnovationPanel({ room, user }) {
+export default function InnovationPanel({ room, user, canControl }) {
   const [minutes, setMinutes] = useState(60)
   const [replay, setReplay] = useState(null)
   const [frame, setFrame] = useState(0)
@@ -98,6 +98,10 @@ export default function InnovationPanel({ room, user }) {
       <hr />
 
       <h4>Scenario Simulation (what-if)</h4>
+      {!canControl && (
+        <p className="sim-result">Simulation is available to Manager/Admin only.</p>
+      )}
+      {canControl && (
       <div className="sim-form">
         <label>People
           <input type="number" min="0" placeholder={room.occupants ?? 0}
@@ -114,7 +118,8 @@ export default function InnovationPanel({ room, user }) {
         </label>
         <button onClick={runSim}>Predict</button>
       </div>
-      {sim && (
+      )}
+      {canControl && sim && (
         <div className="sim-result">
           <p>Current CO2: <b>{sim.currentCo2}</b> ppm · {sim.occupants} people · vent {sim.ventilationOn ? 'ON' : 'OFF'}</p>
           <p>Reaches {sim.targetPpm} ppm: <b>{sim.reachLimitType === 'never' ? 'Never under these conditions' :

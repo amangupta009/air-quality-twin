@@ -149,6 +149,7 @@ export default function App() {
         <button className="ghost" onClick={toggleTheme}>{dark ? 'Light mode' : 'Dark mode'}</button>
         {isAdmin && <button className="ghost" onClick={() => { setShowAdmin(!showAdmin); setShowInnovation(false) }}>{showAdmin ? 'Dashboard' : 'Admin'}</button>}
         {canControl && <button className="ghost" onClick={() => { setShowInnovation(!showInnovation); setShowAdmin(false) }}>{showInnovation ? 'Dashboard' : 'Replay/Sim'}</button>}
+        {!canControl && <button className="ghost" onClick={() => { setShowInnovation(!showInnovation); setShowAdmin(false) }}>{showInnovation ? 'Dashboard' : 'Replay'}</button>}
         <button className="ghost" onClick={handleLogout}>Logout</button>
       </div>
 
@@ -157,7 +158,7 @@ export default function App() {
       {isAdmin && showAdmin && rooms[0] ? (
         <CalibrationScreen rooms={rooms} user={user} />
       ) : showInnovation && rooms[0] ? (
-        <InnovationPanel room={rooms[0]} user={user} />
+        <InnovationPanel room={rooms[0]} user={user} canControl={canControl} />
       ) : (
         <>
           <div className="big-status">{STATUS_WORD[worstStatus(rooms)]}</div>
