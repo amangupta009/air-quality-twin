@@ -103,11 +103,12 @@ public class ReplaySimulationController {
         double minutes = twinService.projectMinutesToCo2Threshold(roomId, occupants, ach, target);
         double current = state.getCo2Ppm();
         String type = minutes < 0 ? "never" : (minutes == 0 ? "already" : "in");
+        boolean ventOn = Boolean.TRUE.equals(request.ventilationOn());
         return ResponseEntity.ok(Map.of(
                 "roomId", roomId,
                 "currentCo2", current,
                 "occupants", occupants,
-                "ventilationOn", request.ventilationOn(),
+                "ventilationOn", ventOn,
                 "targetPpm", target,
                 "reachLimitType", type,
                 "minutesToLimit", minutes
