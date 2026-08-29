@@ -39,7 +39,7 @@ export function logout() {
   if (authToken) {
     fetch('/api/auth/logout', {
       method: 'POST',
-      headers: authHeaders(),
+      headers: authHeaders({ token: authToken }),
       body: JSON.stringify({ token: authToken }),
     }).catch(() => {})
   }
@@ -47,7 +47,7 @@ export function logout() {
 }
 
 export function fetchRooms() {
-  return fetch('/api/rooms').then(handle)
+  return fetch('/api/rooms', { headers: authHeaders() }).then(handle)
 }
 
 export function setVentilation(roomId, action, actor = 'facility-manager', note = '') {
@@ -75,11 +75,11 @@ export function setOccupancy(roomId, occupants) {
 }
 
 export function fetchReadings(roomId, minutes = 15) {
-  return fetch(`/api/rooms/${roomId}/readings?minutes=${minutes}`).then(handle)
+  return fetch(`/api/rooms/${roomId}/readings?minutes=${minutes}`, { headers: authHeaders() }).then(handle)
 }
 
 export function fetchThresholds() {
-  return fetch('/api/settings/thresholds').then(handle)
+  return fetch('/api/settings/thresholds', { headers: authHeaders() }).then(handle)
 }
 
 export function updateThresholds(co2Ppm) {
@@ -91,7 +91,7 @@ export function updateThresholds(co2Ppm) {
 }
 
 export function fetchCalibration(roomId) {
-  return fetch(`/api/calibration/${roomId}`).then(handle)
+  return fetch(`/api/calibration/${roomId}`, { headers: authHeaders() }).then(handle)
 }
 
 export function saveCalibration(data) {
@@ -104,11 +104,11 @@ export function saveCalibration(data) {
 
 export function fetchDailySummary(roomId, date = '') {
   const q = date ? `?date=${date}` : ''
-  return fetch(`/api/summary/daily/${roomId}${q}`).then(handle)
+  return fetch(`/api/summary/daily/${roomId}${q}`, { headers: authHeaders() }).then(handle)
 }
 
 export function fetchReplay(roomId, minutes = 60) {
-  return fetch(`/api/replay/${roomId}?minutes=${minutes}`).then(handle)
+  return fetch(`/api/replay/${roomId}?minutes=${minutes}`, { headers: authHeaders() }).then(handle)
 }
 
 export function simulateScenario(roomId, occupants, ventilationOn, targetPpm = null) {
