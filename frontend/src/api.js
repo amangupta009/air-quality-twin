@@ -21,10 +21,18 @@ async function handle(response) {
   return response.json()
 }
 
-function authHeaders(body) {
-  const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
-  return headers
+// Headers for read-only calls (only the bearer token).
+function authHeaders() {
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {}
+}
+
+// Headers for calls that send a JSON body: bearer token + Content-Type.
+// Passing the body object guarantees Content-Type is always set, so the
+// backend never rejects the request with 415 Unsupported Media Type.
+function jsonHeaders(body) {
+  const headers = authHeaders()
+  headers['Content-Type'] = 'application/json'
+  return { headers, body: JSON.stringify(body) }
 }
 
 export function login(username, password) {
@@ -37,11 +45,7 @@ export function login(username, password) {
 
 export function logout() {
   if (authToken) {
-    fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: authHeaders({ token: authToken }),
-      body: JSON.stringify({ token: authToken }),
-    }).catch(() => {})
+    fetch('/api/auth/logout', jsonHeaders({ token: authToken })).catch(() => {})
   }
   setAuthToken('')
 }
@@ -53,24 +57,21 @@ export function fetchRooms() {
 export function setVentilation(roomId, action, actor = 'facility-manager', note = '') {
   return fetch(`/api/rooms/${roomId}/ventilation`, {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ action, actor, note }),
+    ...jsonHeaders({ action, actor, note }),
   }).then(handle)
 }
 
 export function renameRoom(roomId, name) {
   return fetch(`/api/rooms/${roomId}/name`, {
     method: 'PATCH',
-    headers: authHeaders(),
-    body: JSON.stringify({ name }),
+    ...jsonHeaders({ name }),
   }).then(handle)
 }
 
 export function setOccupancy(roomId, occupants) {
   return fetch(`/api/rooms/${roomId}/occupancy`, {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ occupants }),
+    ...jsonHeaders({ occupants }),
   }).then(handle)
 }
 
@@ -85,8 +86,7 @@ export function fetchThresholds() {
 export function updateThresholds(co2Ppm) {
   return fetch('/api/settings/thresholds', {
     method: 'PUT',
-    headers: authHeaders(),
-    body: JSON.stringify({ co2Ppm }),
+    ...jsonHeaders({ co2Ppm }),
   }).then(handle)
 }
 
@@ -97,8 +97,7 @@ export function fetchCalibration(roomId) {
 export function saveCalibration(data) {
   return fetch('/api/calibration', {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify(data),
+    ...jsonHeaders(data),
   }).then(handle)
 }
 
@@ -114,7 +113,6 @@ export function fetchReplay(roomId, minutes = 60) {
 export function simulateScenario(roomId, occupants, ventilationOn, targetPpm = null) {
   return fetch(`/api/simulate/${roomId}`, {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ occupants, ventilationOn, targetPpm }),
+    ...jsonHeaders({ occupants, ventilationOn, targetPpm }),
   }).then(handle)
 }
