@@ -17,6 +17,20 @@ export LD_LIBRARY_PATH="${RUNTIME}/mosquitto/usr/lib/x86_64-linux-gnu"
 log() { echo "[start-all] $*"; }
 is_up() { ss -tln 2>/dev/null | grep -q ":$1 "; }
 
+# Pick the newest JDK >= 21 (the project needs Java 21 class files, but the
+# machine's default `java` may be older). Highest version found wins.
+JAVA_BIN="$(command -v java || true)"
+JAVA_BIN_VERS="$(java -version 2>&1 | head -1 | grep -oP 'version "\K[0-9]+' || echo 0)"
+for cand in $(ls -d /usr/lib/jvm/java-*-openjdk-amd64/bin/java 2>/dev/null); do
+    [ -x "$cand" ] || continue
+    vers="$("$cand" -version 2>&1 | head -1 | grep -oP 'version "\K[0-9]+' || echo 0)"
+    if [ "$vers" -ge 21 ] && [ "$vers" -gt "${JAVA_BIN_VERS:-0}" ]; then
+        JAVA_BIN="$cand"
+        JAVA_BIN_VERS="$vers"
+    fi
+done
+log "Using Java: $("$JAVA_BIN" -version 2>&1 | head -1)"
+
 mkdir -p "$RUNTIME"
 
 # --- 1. PostgreSQL ----------------------------------------------------------
@@ -76,7 +90,7 @@ else
     JAR="$ROOT/backend/target/air-quality-twin-0.0.1-SNAPSHOT.jar"
     if [ ! -f "$JAR" ] || find "$ROOT/backend/src" -newer "$JAR" -print -quit | grep -q .; then
         log "Building backend jar (source changed / not built yet, ~20s)..."
-        (cd "$ROOT/backend" && ./mvnw -q -DskipTests package >/dev/null)
+        (cd "$ROOT/backend" && JAVA_HOME="$(dirname "$(dirname "$JAVA_BIN")")" ./mvnw -q -DskipTests package >/dev/null)
     fi
     log "Starting backend jar (single JVM, capped heap)..."
     (
@@ -85,7 +99,7 @@ else
             DB_USER=aq_user DB_PASSWORD=aq_pass \
             MQTT_BROKER=tcp://localhost:1884 SENSOR_MODE=${SENSOR_MODE:-simulator} \
             SERVER_PORT=18080 \
-            nohup java -Xms64m -Xmx400m -jar "$JAR" > "$RUNTIME/backend.log" 2>&1 < /dev/null &
+            nohup "$JAVA_BIN" -Xms64m -Xmx400m -jar "$JAR" > "$RUNTIME/backend.log" 2>&1 < /dev/null &
     )
 fi
 
