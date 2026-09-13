@@ -14,5 +14,7 @@ public interface AlertEventRepository extends JpaRepository<AlertEvent, Long> {
 
     List<AlertEvent> findByRoomIdOrderByTriggeredAtDesc(String roomId);
 
+    List<AlertEvent> findAllByOrderByTriggeredAtDesc();
+
     List<AlertEvent> findByTriggeredAtBetween(Instant from, Instant to);
 }

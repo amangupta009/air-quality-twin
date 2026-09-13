@@ -1,10 +1,12 @@
 import { useState } from 'react'
 
-// Login with role-based credentials (viewer / manager / admin).
+// Step 1 of login: just credentials. Room choice / creation happens on the
+// next screen (RoomSelect) so the flow is clean:
+//   login -> pick existing room, or (ADMIN) create a new one.
 // Default demo accounts:
 //   viewer  / viewer123   (read-only)
 //   manager / manager123  (ventilation + occupancy control)
-//   admin   / admin123    (everything incl. calibration, settings)
+//   admin   / admin123    (everything incl. create rooms, calibration)
 export default function LoginGate({ onLogin }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')

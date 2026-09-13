@@ -29,7 +29,7 @@ public class SensorReadingEntity {
     private String roomId;
 
     @Column(nullable = false, length = 16)
-    private String metric; // co2 | pm25 | pm10
+    private String metric; // co2 or occupancy
 
     @Column(nullable = false)
     private double value;

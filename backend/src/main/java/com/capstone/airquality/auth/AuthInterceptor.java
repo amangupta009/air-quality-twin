@@ -32,6 +32,9 @@ public class AuthInterceptor implements HandlerInterceptor {
         // Whitelist: login always public
         if (path.equals("/api/auth/login")) return true;
 
+        // Public metadata (e.g. room list on the login screen)
+        if (path.startsWith("/api/meta")) return true;
+
         // Extract bearer token
         String auth = request.getHeader("Authorization");
         String token = null;
@@ -82,6 +85,14 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         // Simulation -> facility manager
         if (path.startsWith("/api/simulate")) return AuthService.Role.FACILITY_MANAGER;
+
+        // Room entry (audit) -> any authenticated user (viewer and up)
+        if (method.equalsIgnoreCase("POST") && path.matches("/api/rooms/[^/]+/enter"))
+            return AuthService.Role.VIEWER;
+
+        // Room creation (POST /api/rooms) -> ADMIN only
+        if ("POST".equalsIgnoreCase(method) && path.equals("/api/rooms"))
+            return AuthService.Role.ADMIN;
 
         // Any other /api mutation (ventilation, occupancy, rename) -> FACILITY_MANAGER
         if (path.startsWith("/api/rooms")) return AuthService.Role.FACILITY_MANAGER;

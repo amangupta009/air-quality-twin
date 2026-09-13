@@ -31,7 +31,7 @@ public class CalibrationController {
 
     public record CalibrationRequest(
             @NotBlank String roomId,
-            @NotBlank @Pattern(regexp = "co2|pm25|pm10", message = "metric must be co2/pm25/pm10") String metric,
+            @NotBlank @Pattern(regexp = "co2", message = "metric must be co2") String metric,
             Double offsetValue,
             Double scaleValue,
             @NotBlank String calibratedBy,

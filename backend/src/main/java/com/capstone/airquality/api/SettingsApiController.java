@@ -17,8 +17,7 @@ import java.util.Map;
 public class SettingsApiController {
 
     public record ThresholdUpdate(
-            @Positive(message = "CO2 limit must be positive") Double co2Ppm,
-            @Positive(message = "PM2.5 limit must be positive") Double pm25Ugm3) {
+            @Positive(message = "CO2 limit must be positive") Double co2Ppm) {
     }
 
     private final ThresholdSettings thresholds;
@@ -29,17 +28,15 @@ public class SettingsApiController {
 
     @GetMapping("/thresholds")
     public Map<String, Double> get() {
-        return Map.of(
-                "co2Ppm", thresholds.getCo2Ppm(),
-                "pm25Ugm3", thresholds.getPm25Ugm3());
+        return Map.of("co2Ppm", thresholds.getCo2Ppm());
     }
 
     @PutMapping("/thresholds")
     public ResponseEntity<Map<String, Double>> update(@RequestBody ThresholdUpdate update) {
-        if (update.co2Ppm() == null && update.pm25Ugm3() == null) {
+        if (update.co2Ppm() == null) {
             return ResponseEntity.badRequest().build();
         }
-        thresholds.update(update.co2Ppm(), update.pm25Ugm3());
+        thresholds.update(update.co2Ppm());
         return ResponseEntity.ok(get());
     }
 }

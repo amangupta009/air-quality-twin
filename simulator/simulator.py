@@ -9,7 +9,6 @@ or demonstrating that ingestion works from an EXTERNAL publisher.
 
 Publishes to the exact topic contract the future ESP32 will use:
     sensors/{roomId}/co2        {"value": <ppm>,   "unit": "ppm",   "ts": iso8601}
-    sensors/{roomId}/pm25       {"value": <ug/m3>, "unit": "ugm3",  "ts": iso8601}
     sensors/{roomId}/occupancy  {"value": <count>, "unit": "persons", "ts": iso8601}
 
 Physics model matches SimulatorFeed.java so behaviour is comparable:
@@ -38,8 +37,6 @@ class SimulatorState:
     def __init__(self, capacity: int):
         self.capacity = capacity
         self.co2 = OUTDOOR_CO2 + 20.0
-        self.pm25_base = 8.0
-        self.pm25_spike = 0.0
         self.occupants = 0
         self.rng = random.Random()
 
@@ -51,12 +48,7 @@ class SimulatorState:
         self.co2 += self.rng.gauss(0, 2.0)
         self.co2 = max(OUTDOOR_CO2 - 10, self.co2)
 
-        if self.rng.random() < 0.004:
-            self.pm25_spike += 15 + self.rng.random() * 30
-        half_life = 40 if ventilation_on else 120
-        self.pm25_spike *= 2 ** (-dt / half_life)
-        pm25 = max(0.5, self.pm25_base + self.pm25_spike + self.rng.gauss(0, 0.8))
-        return {"co2": round(self.co2, 1), "pm25": round(pm25, 1), "occupancy": self.occupants}
+        return {"co2": round(self.co2, 1), "occupancy": self.occupants}
 
     def _update_occupants(self):
         hour = time.localtime().tm_hour
@@ -87,14 +79,14 @@ def main() -> None:
 
     state = SimulatorState(capacity=8)
     dt = args.interval * args.speed
-    print(f"Publishing to sensors/{args.room}/{{co2,pm25,occupancy}} every "
+    print(f"Publishing to sensors/{args.room}/{{co2,occupancy}} every "
           f"{args.interval}s (model step {dt:.0f}s). Ctrl+C to stop.")
 
     try:
         while True:
             readings = state.tick(dt, ventilation_on=False)  # set True to demo vent effect
             ts = datetime.now(timezone.utc).isoformat()
-            units = {"co2": "ppm", "pm25": "ugm3", "occupancy": "persons"}
+            units = {"co2": "ppm", "occupancy": "persons"}
             for metric, value in readings.items():
                 payload = json.dumps({"value": value, "unit": units[metric], "ts": ts})
                 client.publish(f"sensors/{args.room}/{metric}", payload)

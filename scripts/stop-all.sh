@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Stops everything started by start-all.sh (backend, frontend, MQTT, DB).
+# Stops everything started by start-all.sh (backend jar, frontend, MQTT, DB).
 set -u
 
 RUNTIME="${HOME}/aq-runtime"
 PGBIN="/usr/lib/postgresql/18/bin"
 
-echo "[stop-all] Stopping backend..."
+echo "[stop-all] Stopping backend jar..."
+pkill -f "air-quality-twin-0.0.1-SNAPSHOT.jar" 2>/dev/null
 pkill -f "spring-boot:run" 2>/dev/null
 
 echo "[stop-all] Stopping frontend..."
-pkill -f "vite" 2>/dev/null
+pkill -f "[v]ite" 2>/dev/null
 
 echo "[stop-all] Stopping Mosquitto..."
 pkill -f "mosquitto-dev.conf" 2>/dev/null

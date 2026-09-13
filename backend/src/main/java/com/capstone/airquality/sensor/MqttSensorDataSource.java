@@ -2,7 +2,7 @@ package com.capstone.airquality.sensor;
 
 import com.capstone.airquality.config.MqttProperties;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
+import org.eclipse.paho.client.mqttv3.MqttCallbackExtended;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -66,7 +66,22 @@ public class MqttSensorDataSource implements SensorDataSource {
             MqttConnectOptions options = new MqttConnectOptions();
             options.setAutomaticReconnect(true);
             options.setCleanSession(true);
-            client.setCallback(new MqttCallback() {
+            client.setCallback(new MqttCallbackExtended() {
+                @Override
+                public void connectComplete(boolean reconnect, String serverURI) {
+                    // Re-issue the subscription on BOTH first connect and every
+                    // auto-reconnect: with cleanSession=true the broker forgets
+                    // our subscription when the link drops, so without this the
+                    // backend silently stops getting readings after a reconnect.
+                    try {
+                        String filter = mqttProps.topicPrefix() + "/+/+";
+                        client.subscribe(filter);
+                        log.info("(Re)subscribed to {} on {}", filter, serverURI);
+                    } catch (MqttException e) {
+                        log.warn("Resubscribe failed: {}", e.getMessage());
+                    }
+                }
+
                 @Override
                 public void connectionLost(Throwable cause) {
                     log.warn("MQTT connection lost; automatic reconnect is active");
@@ -83,9 +98,10 @@ public class MqttSensorDataSource implements SensorDataSource {
                 }
             });
             client.connect(options);
-            String filter = mqttProps.topicPrefix() + "/+/+";
-            client.subscribe(filter);
-            log.info("Subscribed to {} on {}", filter, mqttProps.brokerUri());
+            // connectComplete() above re-issues the subscription on every
+            // (re)connect, so no separate subscribe needed here.
+            log.info("MQTT connected to {} (cleanSession={})",
+                    mqttProps.brokerUri(), options.isCleanSession());
         } catch (MqttException e) {
             log.warn("MQTT broker not reachable yet ({}); retrying in 5s", e.getMessage());
             scheduleRetry(listener);
@@ -131,7 +147,6 @@ public class MqttSensorDataSource implements SensorDataSource {
     static String defaultUnitFor(String metric) {
         return switch (metric) {
             case "co2" -> "ppm";
-            case "pm25", "pm10" -> "ugm3";
             case "occupancy" -> "persons";
             default -> "raw";
         };

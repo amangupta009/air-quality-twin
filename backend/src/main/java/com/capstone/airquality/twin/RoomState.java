@@ -14,14 +14,10 @@ public class RoomState {
     private final String roomId;
 
     private Double co2Ppm;
-    private Double pm25;
-    private Double pm10;
     private Integer occupants;
     private boolean ventilationOn;
 
     private Instant co2UpdatedAt;
-    private Instant pm25UpdatedAt;
-    private Instant pm10UpdatedAt;
     private Instant occupancyUpdatedAt;
     private Instant ventilationChangedAt;
 
@@ -45,24 +41,6 @@ public class RoomState {
         this.co2UpdatedAt = at;
     }
 
-    public Double getPm25() {
-        return pm25;
-    }
-
-    public void setPm25(Double pm25, Instant at) {
-        this.pm25 = pm25;
-        this.pm25UpdatedAt = at;
-    }
-
-    public Double getPm10() {
-        return pm10;
-    }
-
-    public void setPm10(Double pm10, Instant at) {
-        this.pm10 = pm10;
-        this.pm10UpdatedAt = at;
-    }
-
     public Integer getOccupants() {
         return occupants;
     }
@@ -83,9 +61,6 @@ public class RoomState {
 
     public Instant getLastUpdate() {
         Instant latest = co2UpdatedAt;
-        if (pm25UpdatedAt != null && (latest == null || pm25UpdatedAt.isAfter(latest))) {
-            latest = pm25UpdatedAt;
-        }
         if (occupancyUpdatedAt != null && (latest == null || occupancyUpdatedAt.isAfter(latest))) {
             latest = occupancyUpdatedAt;
         }

@@ -15,7 +15,7 @@ class RoomTwinServiceTest {
 
     private final RoomTwinService twin = new RoomTwinService(
             new com.capstone.airquality.config.ThresholdSettings(
-                    new com.capstone.airquality.config.ThresholdProperties(1000, 35)));
+                    new com.capstone.airquality.config.ThresholdProperties(1000)));
 
     private void withPeople(int n) {
         twin.applyReading("roomX", "occupancy", n, Instant.now());

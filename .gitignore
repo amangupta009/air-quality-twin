@@ -27,6 +27,10 @@ venv/
 *.iml
 .DS_Store
 
+# --- PlatformIO (ESP32) build output ---
+esp32/.pio/
+esp32/.vscode/
+
 # --- Logs & build output ---
 *.log
 coverage/

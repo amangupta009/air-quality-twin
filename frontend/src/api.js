@@ -61,6 +61,35 @@ export function setVentilation(roomId, action, actor = 'facility-manager', note 
   }).then(handle)
 }
 
+export function enterRoom(roomId, actor) {
+  return fetch(`/api/rooms/${roomId}/enter`, {
+    method: 'POST',
+    ...jsonHeaders({ actor }),
+  }).then(handle)
+}
+
+// Public room list for the login screen (create-or-enter a room).
+export function fetchMetaRooms() {
+  return fetch('/api/meta/rooms').then(handle)
+}
+
+// Create a brand-new room (ADMIN only, enforced by the backend).
+export function createRoom(id, name) {
+  return fetch('/api/rooms', {
+    method: 'POST',
+    ...jsonHeaders({ id, name }),
+  }).then(handle)
+}
+
+// Cross-room audit: every action / alert across ALL rooms, newest first.
+export function fetchAllActions() {
+  return fetch('/api/audit/actions', { headers: authHeaders() }).then(handle)
+}
+
+export function fetchAllAlerts() {
+  return fetch('/api/audit/alerts', { headers: authHeaders() }).then(handle)
+}
+
 export function renameRoom(roomId, name) {
   return fetch(`/api/rooms/${roomId}/name`, {
     method: 'PATCH',
@@ -108,6 +137,14 @@ export function fetchDailySummary(roomId, date = '') {
 
 export function fetchReplay(roomId, minutes = 60) {
   return fetch(`/api/replay/${roomId}?minutes=${minutes}`, { headers: authHeaders() }).then(handle)
+}
+
+export function fetchAlerts(roomId) {
+  return fetch(`/api/rooms/${roomId}/alerts`, { headers: authHeaders() }).then(handle)
+}
+
+export function fetchActions(roomId) {
+  return fetch(`/api/rooms/${roomId}/actions`, { headers: authHeaders() }).then(handle)
 }
 
 export function simulateScenario(roomId, occupants, ventilationOn, targetPpm = null) {

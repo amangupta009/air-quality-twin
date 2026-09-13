@@ -1,30 +1,24 @@
 /*
- * ESP32 Air Quality Sensor Station
- * --------------------------------
- * Reads real CO2 (MH-Z19B) and PM2.5/PM10 (PMS5003) and publishes them
- * to the same MQTT contract the backend expects:
+ * ESP32 Air Quality Sensor Station (MQ-135 build)
+ * -----------------------------------------------
+ * Reads an approximate CO2 level from an MQ-135 analog sensor and
+ * publishes it to the MQTT contract the backend expects:
  *
- *   sensors/{roomId}/co2     {"value": 512.4, "unit": "ppm",   "ts": iso8601}
- *   sensors/{roomId}/pm25    {"value": 8.3,    "unit": "ugm3", "ts": iso8601}
+ *   sensors/{roomId}/co2     {"value": 512.4, "unit": "ppm", "ts": iso8601}
  *
- * Swap the backend to real hardware by setting sensor.mode=hardware and
- * pointing mqtt.broker-uri at this device's broker.
+ * MQ-135 is a low-cost analog chemiresistor. It is NOT a calibrated NDIR
+ * sensor, so the ppm value is an estimate (rough room-trend indicator), not
+ * lab-grade. See docs/ for the calibration hook in the backend.
  *
  * Wiring (breadboard):
- *   MH-Z19B:
- *     VCC  -> 5V  (NOT 3.3V - sensor needs 5V)
- *     GND  -> GND (common ground with ESP32)
- *     TX   -> ESP32 RX2 (GPIO16)
- *     RX   -> ESP32 TX2 (GPIO17)  [via 1k resistor for level safety]
- *   PMS5003:
- *     VCC  -> 5V
- *     GND  -> GND
- *     TX   -> ESP32 RX1 (GPIO14)  [or use SoftwareSerial]
- *     (optional) SET -> GND for sleep control
+ *   MQ-135 (common 4-pin module):
+ *     VCC  -> ESP32 3.3V   (powering at 3.3V keeps AO within ADC range)
+ *     GND  -> ESP32 GND
+ *     AO   -> ESP32 GPIO34 (ADC1_CH6)
+ *     DO   -> leave unconnected
  *
  * Dependencies (Arduino IDE / PlatformIO):
  *   - PubSubClient by Nick O'Leary
- *   - SoftwareSerial or the built-in HW Serial
  *
  * Build with PlatformIO (recommended) - see platformio.ini in this folder.
  * Flash: pio run -t upload
@@ -32,99 +26,80 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <ArduinoJson.h>
 
 // ---------------------------------------------------------------------------
 // CONFIGURATION - edit these for your environment
 // ---------------------------------------------------------------------------
-const char *WIFI_SSID     = "YOUR_WIFI";
+const char *WIFI_SSID     = "YOUR_WIFI_SSID";
 const char *WIFI_PASS     = "YOUR_WIFI_PASSWORD";
 
-const char *MQTT_BROKER   = "192.168.1.100";   // laptop/backend host IP
-const int   MQTT_PORT     = 1883;
+const char *MQTT_BROKER   = "YOUR_BACKEND_LAN_IP";  // laptop/backend host LAN IP
+const int   MQTT_PORT     = 1884;              // mosquitto dev listener port
 const char *ROOM_ID       = "room101";         // must match backend room
 const char *TOPIC_CO2     = "sensors/room101/co2";
-const char *TOPIC_PM25    = "sensors/room101/pm25";
 
 const int   READ_INTERVAL_MS = 5000;           // publish every 5s
 
 // GPIO wiring
-const int MHZ19_RX = 16;   // ESP32 RX2 (read MHZ19 TX)
-const int MHZ19_TX = 17;   // ESP32 TX2 (write MHZ19 RX)
-const int PMS_RX   = 5;    // ESP32 GPIO5 (SoftwareSerial RX reads PMS TX)
-const int PMS_TX   = 18;   // ESP32 GPIO18 (SoftwareSerial TX - not used)
+const int MQ135_AO = 34;    // ESP32 GPIO34 (ADC1_CH6) reads MQ-135 analog out
+
+const int WARMUP_MS    = 120000;  // 2min heater settle before trusting readings
+const int SAMPLES      = 20;      // averaging samples per read
+const int EMA_MS       = 30000;   // slow baseline adapt window for sensor drift
 
 // ---------------------------------------------------------------------------
 WiFiClient espClient;
 PubSubClient mqtt(espClient);
-HardwareSerial mhzSerial(2);   // UART2
-
-// Simple software serial for PMS5003
-#include <SoftwareSerial.h>
-SoftwareSerial pmsSerial(PMS_RX, PMS_TX);
 
 unsigned long lastRead = 0;
+unsigned long bootTime = 0;
+unsigned long lastBaselineUpdate = 0;
+float baselineV = 0.0f;      // slow-moving baseline (assumed ~400 ppm air)
 
 // ---------------------------------------------------------------------------
-float readCo2() {
-  // MH-Z19B: send 0xFF 0x01 0x86 0x00 0x00 0x00 0x00 0x00 0x79, read 9 bytes
-  static const uint8_t cmd[9] = {0xFF, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79};
-  mhzSerial.write(cmd, 9);
-  mhzSerial.flush();
-  uint8_t buf[9];
-  int i = 0;
-  unsigned long start = millis();
-  while (i < 9 && millis() - start < 200) {
-    if (mhzSerial.available()) {
-      buf[i++] = mhzSerial.read();
-    }
+float readAnalogVoltage() {
+  long sum = 0;
+  for (int i = 0; i < SAMPLES; i++) {
+    sum += analogRead(MQ135_AO);
+    delay(2);
   }
-  // Check for 0xFF start and valid checksum
-  if (i < 9 || buf[0] != 0xFF) return -1;
-  uint8_t sum = 0;
-  for (int j = 1; j < 8; j++) sum += buf[j];
-  if ((0xFF - sum + 1) != buf[8]) return -1;   // bad checksum
-  return (buf[2] * 256) + buf[3];              // CO2 in ppm
+  // ESP32 ADC is 12-bit (0-4095) over 0-3.3V
+  return (sum / (float)SAMPLES) * (3.3f / 4095.0f);
 }
 
 // ---------------------------------------------------------------------------
-bool readPm25(float &pm25, float &pm10) {
-  // PMS5003 outputs 32-byte frames (0x42 0x4d ...) at 1Hz
-  // We look for the start marker then parse the standard frame.
-  uint8_t buf[32];
-  int i = 0;
-  unsigned long start = millis();
-  // Wait for start marker 0x42 0x4D
-  while (i < 2 && millis() - start < 1200) {
-    while (i < 2 && pmsSerial.available()) {
-      uint8_t b = pmsSerial.read();
-      if (i == 0 && b != 0x42) continue;
-      if (i == 1 && b != 0x4D) { i = 0; continue; }
-      buf[i++] = b;
-    }
+// MQ-135 has no digital ppm output. We map sensor voltage to a plausible CO2
+// trend: higher gas concentration -> higher AO voltage on the module (active
+// variant). We keep a slow-moving baseline of clean-air voltage so short-term
+// variations (breathing near the sensor, room ventilation) push ppm up/down
+// while long-term sensor drift is absorbed. This is deliberately an ESTIMATE.
+float estimateCo2Ppm(float voltage, float baseline) {
+  if (baseline <= 0.0f) return -1;
+  float ratio = voltage / baseline;          // >1 when gas present (active-high)
+  if (ratio < 1.0f) {
+    // Below baseline: gentle slope downward, never below outdoor (~350ppm)
+    return 400.0f - (1.0f - ratio) * 60.0f;
   }
-  if (i < 2) return false;
-  while (i < 32 && millis() - start < 1200) {
-    if (pmsSerial.available()) buf[i++] = pmsSerial.read();
+  float ppm = 400.0f * pow(ratio, 3.5f);
+  if (ppm > 5000.0f) ppm = 5000.0f;
+  return ppm;
+}
+
+void updateBaseline(float voltage) {
+  if (baselineV <= 0.0f) {
+    baselineV = voltage;
+    return;
   }
-  if (i < 32) return false;
-  // Frame length check would go here (buf[2..3] == 0x001C)
-  pm25 = (buf[6] * 256) + buf[7];    // PM2.5 (ug/m3, CF=1)
-  pm10 = (buf[8] * 256) + buf[9];    // PM10
-  return true;
+  float alpha = 1.0f - exp(-1.0f / (EMA_MS / READ_INTERVAL_MS));
+  baselineV += (voltage - baselineV) * alpha;
 }
 
 // ---------------------------------------------------------------------------
 void publishMetric(const char *topic, float value, const char *unit) {
-  StaticJsonDocument<128> doc;
-  doc["value"] = value;
-  doc["unit"]  = unit;
-  doc["ts"]    = "?ts?";   // replaced below with ISO time
-  // Build ISO-8601 timestamp manually (crude but adequate)
   char ts[32];
   struct tm t;
   if (!getLocalTime(&t)) {
-    snprintf(ts, sizeof(ts), "%l", (long)millis());
+    snprintf(ts, sizeof(ts), "%lu", (unsigned long)millis());
   } else {
     snprintf(ts, sizeof(ts), "%04d-%02d-%02dT%02d:%02d:%02dZ",
              t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
@@ -149,10 +124,11 @@ void connectMQTT() {
   }
 }
 
+// ---------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-  mhzSerial.begin(9600);       // MH-Z19B at 9600 baud
-  pmsSerial.begin(9600);       // PMS5003 at 9600 baud
+  pinMode(MQ135_AO, INPUT);
+  analogReadResolution(12);
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Connecting WiFi");
@@ -167,27 +143,39 @@ void setup() {
   configTime(0, 0, "pool.ntp.org");   // for timestamp
 
   connectMQTT();
+
+  bootTime = millis();
 }
 
+// ---------------------------------------------------------------------------
 void loop() {
   if (!mqtt.connected()) connectMQTT();
   mqtt.loop();
 
+  // Heater warm-up: sensor output is not stable for the first couple minutes.
+  if (millis() - bootTime < WARMUP_MS) {
+    delay(500);
+    return;
+  }
+
   if (millis() - lastRead >= READ_INTERVAL_MS) {
     lastRead = millis();
 
-    float co2 = readCo2();
-    if (co2 > 0) {
-      publishMetric(TOPIC_CO2, co2, "ppm");
-      Serial.printf("CO2: %.0f ppm\n", co2);
-    } else {
-      Serial.println("CO2 read failed");
+    float v = readAnalogVoltage();
+
+    // Slow-moving baseline absorbs heater/drift; update it before estimating.
+    if (millis() - lastBaselineUpdate >= EMA_MS) {
+      lastBaselineUpdate = millis();
+      updateBaseline(v);
+      baselineV = (baselineV * 0.9f) + (v * 0.1f);
     }
 
-    float pm25, pm10;
-    if (readPm25(pm25, pm10)) {
-      publishMetric(TOPIC_PM25, pm25, "ugm3");
-      Serial.printf("PM2.5: %.1f ug/m3, PM10: %.1f\n", pm25, pm10);
+    float co2 = estimateCo2Ppm(v, baselineV);
+    if (co2 > 0) {
+      publishMetric(TOPIC_CO2, co2, "ppm");
+      Serial.printf("Raw %.3f V (bl %.3f) -> CO2 ~%.0f ppm\n", v, baselineV, co2);
+    } else {
+      Serial.println("CO2 read failed");
     }
   }
 }

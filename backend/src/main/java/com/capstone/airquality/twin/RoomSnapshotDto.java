@@ -11,7 +11,6 @@ public record RoomSnapshotDto(
         String roomId,
         String roomName,
         Double co2Ppm,
-        Double pm25,
         Integer occupants,
         boolean ventilationOn,
         String status,

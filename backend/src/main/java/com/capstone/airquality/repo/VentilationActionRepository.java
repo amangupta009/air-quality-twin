@@ -11,4 +11,6 @@ public interface VentilationActionRepository extends JpaRepository<VentilationAc
     List<VentilationAction> findByRoomIdOrderByActedAtDesc(String roomId);
 
     List<VentilationAction> findByActedAtBetweenOrderByActedAtAsc(Instant from, Instant to);
+
+    List<VentilationAction> findAllByOrderByActedAtDesc();
 }

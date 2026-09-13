@@ -15,10 +15,9 @@ import java.util.List;
 /**
  * Computes and serves the Daily Exposure Summary (Module 6).
  *
- * For a given UTC day it aggregates every CO2 / PM2.5 reading for a room into:
+ * For a given UTC day it aggregates every CO2 reading for a room into:
  *   - average and maximum CO2
  *   - minutes spent above the configured CO2 limit
- *   - average and maximum PM2.5
  *
  * The result is persisted so it stays stable for reporting and replay, and is
  * also returned directly for current-day queries.
@@ -51,14 +50,9 @@ public class DailyExposureService {
         List<SensorReadingEntity> co2 = readingRepo
                 .findByRoomIdAndRecordedAtBetweenOrderByRecordedAtAsc(roomId, from, to)
                 .stream().filter(r -> "co2".equals(r.getMetric())).toList();
-        List<SensorReadingEntity> pm25 = readingRepo
-                .findByRoomIdAndRecordedAtBetweenOrderByRecordedAtAsc(roomId, from, to)
-                .stream().filter(r -> "pm25".equals(r.getMetric())).toList();
 
         double co2Avg = co2.stream().mapToDouble(SensorReadingEntity::getValue).average().orElse(0);
         double co2Max = co2.stream().mapToDouble(SensorReadingEntity::getValue).max().orElse(0);
-        double pmAvg = pm25.stream().mapToDouble(SensorReadingEntity::getValue).average().orElse(0);
-        double pmMax = pm25.stream().mapToDouble(SensorReadingEntity::getValue).max().orElse(0);
 
         // Approximate minutes above limit: each reading represents one sample
         // interval. Use the average sampling interval if known.
@@ -77,8 +71,6 @@ public class DailyExposureService {
         summary.setAvgCo2Ppm(Math.round(co2Avg * 10.0) / 10.0);
         summary.setMaxCo2Ppm(Math.round(co2Max * 10.0) / 10.0);
         summary.setMinutesAboveCo2Limit(minutesAbove);
-        summary.setAvgPm25(Math.round(pmAvg * 10.0) / 10.0);
-        summary.setMaxPm25(Math.round(pmMax * 10.0) / 10.0);
         summary.setComputedAt(Instant.now());
         return summaryRepo.save(summary);
     }

@@ -9,6 +9,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "thresholds")
 public record ThresholdProperties(
-        double co2Ppm,
-        double pm25Ugm3) {
+        double co2Ppm) {
 }

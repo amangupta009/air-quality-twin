@@ -5,9 +5,11 @@ import com.capstone.airquality.domain.AlertEvent;
 import com.capstone.airquality.domain.OccupancySnapshot;
 import com.capstone.airquality.domain.SensorReadingEntity;
 import com.capstone.airquality.occupancy.OccupancyControl;
+import com.capstone.airquality.domain.Room;
 import com.capstone.airquality.repo.AlertEventRepository;
 import com.capstone.airquality.repo.CalibrationProfileRepository;
 import com.capstone.airquality.repo.OccupancySnapshotRepository;
+import com.capstone.airquality.repo.RoomRepository;
 import com.capstone.airquality.repo.SensorReadingRepository;
 import com.capstone.airquality.sensor.SensorReading;
 import com.capstone.airquality.sensor.SensorReadingListener;
@@ -40,6 +42,7 @@ public class ReadingIngestService implements SensorReadingListener {
     private final OccupancySnapshotRepository occupancyRepo;
     private final AlertEventRepository alertRepo;
     private final CalibrationProfileRepository calibrationRepo;
+    private final RoomRepository roomRepo;
     private final RoomTwinService twinService;
     private final OccupancyControl occupancyControl;
     private final ThresholdSettings thresholds;
@@ -52,6 +55,7 @@ public class ReadingIngestService implements SensorReadingListener {
                                 OccupancySnapshotRepository occupancyRepo,
                                 AlertEventRepository alertRepo,
                                 CalibrationProfileRepository calibrationRepo,
+                                RoomRepository roomRepo,
                                 RoomTwinService twinService,
                                 OccupancyControl occupancyControl,
                                 ThresholdSettings thresholds,
@@ -60,6 +64,7 @@ public class ReadingIngestService implements SensorReadingListener {
         this.occupancyRepo = occupancyRepo;
         this.alertRepo = alertRepo;
         this.calibrationRepo = calibrationRepo;
+        this.roomRepo = roomRepo;
         this.twinService = twinService;
         this.occupancyControl = occupancyControl;
         this.thresholds = thresholds;
@@ -75,6 +80,20 @@ public class ReadingIngestService implements SensorReadingListener {
             handleOccupancy(reading, calibrated, at);
         } else {
             handleMeasurement(reading, calibrated, at);
+            // Single physical sensor setup: mirror the live CO2 measurement to
+            // every registered room so any room you enter shows a live reading.
+            if ("co2".equals(reading.metric())) {
+                for (Room room : roomRepo.findAll()) {
+                    if (room.getId().equals(reading.roomId())) {
+                        continue;
+                    }
+                    handleMeasurement(
+                            new SensorReading(room.getId(), "co2", reading.value(), reading.unit(), at),
+                            calibrated,
+                            at);
+                    broadcastTwinState(room.getId());
+                }
+            }
         }
 
         broadcastTwinState(reading.roomId());
@@ -116,8 +135,7 @@ public class ReadingIngestService implements SensorReadingListener {
     private void evaluateThreshold(String roomId, String metric, double value, Instant at) {
         Double limit = switch (metric) {
             case "co2" -> thresholds.getCo2Ppm();
-            case "pm25" -> thresholds.getPm25Ugm3();
-            default -> null; // pm10 and others: no limit configured yet
+            default -> null; // no limit configured for other metrics
         };
         if (limit == null) {
             return;
@@ -152,7 +170,6 @@ public class ReadingIngestService implements SensorReadingListener {
                 roomId,
                 null,
                 state.getCo2Ppm(),
-                state.getPm25(),
                 state.getOccupants(),
                 state.isVentilationOn(),
                 twinService.statusOf(roomId).toString(),

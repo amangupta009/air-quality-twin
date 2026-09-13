@@ -69,6 +69,20 @@ public class RoomApiController {
             double co2Ppm) {
     }
 
+    public record EnterRequest(
+            @NotBlank
+            String actor) {
+    }
+
+    public record CreateRoomRequest(
+            @NotBlank
+            String id,
+            @NotBlank
+            String name,
+            Integer capacity,
+            Double volumeM3) {
+    }
+
     private final RoomRepository roomRepo;
     private final VentilationActionRepository actionRepo;
     private final AlertEventRepository alertRepo;
@@ -137,6 +151,60 @@ public class RoomApiController {
         return ResponseEntity
                 .created(URI.create("/api/rooms/" + roomId + "/ventilation/" + saved.getId()))
                 .body(saved);
+    }
+
+    /**
+     * Create a brand-new room. ADMIN only (enforced in AuthInterceptor).
+     * id is derived from the entered name ("name is id"; spaces become dashes).
+     */
+    @PostMapping
+    public ResponseEntity<Room> create(@Valid @RequestBody CreateRoomRequest request) {
+        String id = sanitizeRoomId(request.id());
+        if (id.isEmpty() || roomRepo.existsById(id)) {
+            return ResponseEntity.badRequest().build();
+        }
+        String name = request.name() != null && !request.name().isBlank() ? request.name().trim() : id;
+        int cap = request.capacity() != null && request.capacity() > 0 ? request.capacity() : 8;
+        double vol = request.volumeM3() != null && request.volumeM3() > 0 ? request.volumeM3() : 60.0;
+        Room room = new Room(id, name, cap, vol);
+        roomRepo.save(room);
+        twinService.stateFor(id);
+        return ResponseEntity.ok(room);
+    }
+
+    /**
+     * Room entry audit: who entered which room and when.
+     * The room must already exist - creating a new one is a separate, ADMIN-only
+     * operation (POST /api/rooms).
+     */
+    @PostMapping("/{roomId}/enter")
+    public ResponseEntity<VentilationAction> enter(
+            @PathVariable String roomId,
+            @Valid @RequestBody EnterRequest request) {
+
+        String id = sanitizeRoomId(roomId);
+        if (id.isEmpty() || !roomRepo.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        VentilationAction audit = new VentilationAction();
+        audit.setRoomId(id);
+        audit.setAction("ENTER");
+        audit.setActor(request.actor());
+        audit.setNote("entered room");
+        audit.setActedAt(Instant.now());
+        VentilationAction saved = actionRepo.save(audit);
+
+        return ResponseEntity
+                .created(URI.create("/api/rooms/" + id + "/enter/" + saved.getId()))
+                .body(saved);
+    }
+
+    /** Normalizes a free-text room name into the id used across topics/DB. */
+    private String sanitizeRoomId(String raw) {
+        return raw.trim().toLowerCase()
+                .replaceAll("\\s+", "-")
+                .replaceAll("[^a-z0-9-]", "");
     }
 
     /** Rename a room (manual name entry from the dashboard). */
@@ -218,7 +286,6 @@ public class RoomApiController {
                 room.getId(),
                 room.getName(),
                 state.getCo2Ppm(),
-                state.getPm25(),
                 state.getOccupants(),
                 state.isVentilationOn(),
                 twinService.statusOf(room.getId()).toString(),

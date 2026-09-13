@@ -46,7 +46,6 @@ public class SimulatorFeed {
 
     private static class SimState {
         double co2;
-        double pm25Spike;
         int occupants;
         final Random rng = new Random();
 
@@ -77,9 +76,7 @@ public class SimulatorFeed {
                     id -> new SimState(props.simulator().outdoorCo2Ppm() + 20));
             stepOccupancy(s, room.getCapacity(), room.getId());
             stepCo2(s, dt, room.getId());
-            stepPm25(s, dt, room.getId());
             listener.onReading(new SensorReading(room.getId(), "co2", round1(s.co2), "ppm", now));
-            listener.onReading(new SensorReading(room.getId(), "pm25", round1(Math.max(0.5, 8.0 + s.pm25Spike)), "ugm3", now));
             listener.onReading(new SensorReading(room.getId(), "occupancy", s.occupants, "persons", now));
         }
     }
@@ -124,18 +121,6 @@ public class SimulatorFeed {
         s.co2 += (s.occupants * GEN_PPM_PER_PERSON_PER_SEC - decayPerSec * (s.co2 - outdoor)) * dt;
         s.co2 += s.rng.nextGaussian() * 2.0;
         s.co2 = Math.max(outdoor - 10, s.co2);
-    }
-
-    private void stepPm25(SimState s, double dt, String roomId) {
-        if (s.rng.nextDouble() < 0.004) {
-            s.pm25Spike += 15 + s.rng.nextDouble() * 30;
-        }
-        boolean ventOn = twinService.isVentilationOn(roomId);
-        double halfLifeSec = ventOn ? 40 : 120;
-        s.pm25Spike *= Math.exp(-Math.log(2) * dt / halfLifeSec);
-        if (s.pm25Spike < 0.05) {
-            s.pm25Spike = 0;
-        }
     }
 
     private static double round1(double v) {

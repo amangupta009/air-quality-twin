@@ -212,7 +212,6 @@ components:
         roomId: { type: string }
         roomName: { type: string }
         co2Ppm: { type: number, nullable: true }
-        pm25: { type: number, nullable: true }
         occupants: { type: integer, nullable: true }
         ventilationOn: { type: boolean }
         status: { type: string, enum: [OK, WARNING, ALERT] }
@@ -223,7 +222,7 @@ components:
       type: object
       properties:
         roomId: { type: string }
-        metric: { type: string, enum: [co2, pm25, pm10] }
+        metric: { type: string, enum: [co2] }
         value: { type: number }
         unit: { type: string }
         recordedAt: { type: string, format: date-time }
@@ -233,7 +232,7 @@ components:
       required: [roomId, metric, calibratedBy]
       properties:
         roomId: { type: string }
-        metric: { type: string, enum: [co2, pm25, pm10] }
+        metric: { type: string, enum: [co2] }
         offsetValue: { type: number, default: 0 }
         scaleValue: { type: number, default: 1 }
         calibratedBy: { type: string }

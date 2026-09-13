@@ -20,13 +20,21 @@ class TwinEdgeCaseTest {
 
     @BeforeEach
     void setUp() {
-        twin = new RoomTwinService(new ThresholdSettings(new ThresholdProperties(1000, 35)));
+        twin = new RoomTwinService(new ThresholdSettings(new ThresholdProperties(1000)));
     }
 
     @Test
-    void emptyRoomIsAlwaysSafeEvenIfCo2IsHigh() {
+    void emptyRoomFallsBackToFixedCo2Threshold() {
+        // No occupants -> CO2 checked against the fixed configured threshold (1000)
+        // so real sensor readings still surface ALERT on the dashboard.
         twin.applyReading("r", "occupancy", 0, Instant.now());
         twin.applyReading("r", "co2", 2000, Instant.now());
+        assertEquals(RoomTwinService.Status.ALERT, twin.statusOf("r"));
+
+        twin.applyReading("r", "co2", 820, Instant.now());
+        assertEquals(RoomTwinService.Status.WARNING, twin.statusOf("r"));
+
+        twin.applyReading("r", "co2", 500, Instant.now());
         assertEquals(RoomTwinService.Status.OK, twin.statusOf("r"));
     }
 
@@ -46,13 +54,6 @@ class TwinEdgeCaseTest {
         twin.applyReading("r", "occupancy", 5, Instant.now());
         twin.applyReading("r", "co2", 410, Instant.now());
         assertEquals(RoomTwinService.Status.OK, twin.statusOf("r"));
-    }
-
-    @Test
-    void pm25CrossesToAlertIndependently() {
-        twin.applyReading("r", "occupancy", 0, Instant.now());
-        twin.applyReading("r", "pm25", 40, Instant.now());
-        assertEquals(RoomTwinService.Status.ALERT, twin.statusOf("r"));
     }
 
     @Test
@@ -79,9 +80,10 @@ class TwinEdgeCaseTest {
     }
 
     @Test
-    void missingOccupancyDefaultsToZeroPeople() {
-        // No occupancy reading -> 0 people -> safe regardless of CO2
+    void missingOccupancyFallsBackToFixedCo2Threshold() {
+        // No occupancy reading -> CO2 checked against configured threshold (1000),
+        // so a real sensor spike is not silently ignored.
         twin.applyReading("r", "co2", 3000, Instant.now());
-        assertEquals(RoomTwinService.Status.OK, twin.statusOf("r"));
+        assertEquals(RoomTwinService.Status.ALERT, twin.statusOf("r"));
     }
 }

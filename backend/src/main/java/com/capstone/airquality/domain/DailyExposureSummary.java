@@ -12,7 +12,7 @@ import java.time.Instant;
 
 /**
  * Module 6 backing data: per-room daily exposure rollup
- * (avg/max CO2, minutes above limit, avg/max PM2.5).
+ * (avg/max CO2, minutes above limit).
  * Computed once per day by a scheduled job (added in a later phase).
  */
 @Entity
@@ -34,8 +34,6 @@ public class DailyExposureSummary {
     private Double avgCo2Ppm;
     private Double maxCo2Ppm;
     private long minutesAboveCo2Limit;
-    private Double avgPm25;
-    private Double maxPm25;
 
     @Column(nullable = false)
     private Instant computedAt;
@@ -82,22 +80,6 @@ public class DailyExposureSummary {
 
     public void setMinutesAboveCo2Limit(long minutesAboveCo2Limit) {
         this.minutesAboveCo2Limit = minutesAboveCo2Limit;
-    }
-
-    public Double getAvgPm25() {
-        return avgPm25;
-    }
-
-    public void setAvgPm25(Double avgPm25) {
-        this.avgPm25 = avgPm25;
-    }
-
-    public Double getMaxPm25() {
-        return maxPm25;
-    }
-
-    public void setMaxPm25(Double maxPm25) {
-        this.maxPm25 = maxPm25;
     }
 
     public Instant getComputedAt() {

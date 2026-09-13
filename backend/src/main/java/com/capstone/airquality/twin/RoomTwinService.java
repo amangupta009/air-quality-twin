@@ -44,8 +44,6 @@ public class RoomTwinService {
         RoomState state = stateFor(roomId);
         switch (metric) {
             case "co2" -> state.setCo2Ppm(value, at);
-            case "pm25" -> state.setPm25(value, at);
-            case "pm10" -> state.setPm10(value, at);
             case "occupancy" -> state.setOccupants((int) Math.round(value), at);
             default -> {
             }
@@ -61,16 +59,17 @@ public class RoomTwinService {
      *   0 people  → always OK (no indoor source)
      *   N people  → alertThreshold  = 420 + N*15 + 380  (caps at 2500)
      *               warningThreshold = alert * 0.8
-     *   PM2.5 fixed: ALERT >= 35, WARNING >= 28.
      */
     public Status statusOf(String roomId) {
         RoomState s = stateFor(roomId);
-        int occupants = s.getOccupants() != null ? s.getOccupants() : 0;
 
-        if (occupants <= 0) {
-            return pm25Status(s);
+        if (s.getOccupants() == null || s.getOccupants() <= 0) {
+            // No occupancy signal: fall back to the fixed configured thresholds so
+            // real sensor readings still surface ALERT/WARNING on the dashboard.
+            return co2Status(s);
         }
 
+        int occupants = s.getOccupants();
         double alertLimit = Math.min(420.0 + occupants * 15.0 + 380.0, 2500.0);
         double warningLimit = alertLimit * 0.8;
         Status worst = Status.OK;
@@ -83,13 +82,13 @@ public class RoomTwinService {
             }
         }
 
-        return worse(worst, pm25Status(s));
+        return worst;
     }
 
-    private Status pm25Status(RoomState s) {
-        if (s.getPm25() == null) return Status.OK;
-        if (s.getPm25() >= thresholds.getPm25Ugm3()) return Status.ALERT;
-        if (s.getPm25() >= thresholds.getPm25Ugm3() * 0.8) return Status.WARNING;
+    private Status co2Status(RoomState s) {
+        if (s.getCo2Ppm() == null) return Status.OK;
+        if (s.getCo2Ppm() >= thresholds.getCo2Ppm()) return Status.ALERT;
+        if (s.getCo2Ppm() >= thresholds.getCo2Ppm() * 0.8) return Status.WARNING;
         return Status.OK;
     }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
 # Starts the FULL stack without Docker / root:
-#   PostgreSQL (:5433) -> Mosquitto MQTT (:1884) -> Spring Boot (:8080)
+#   PostgreSQL (:5433) -> Mosquitto MQTT (:1884) -> Spring Boot (:18080)
 #   -> React dashboard (:5173)
 #
 # Runtime data lives in ~/aq-runtime (survives reboot, never committed).
@@ -60,7 +60,7 @@ else
     fi
     log "Starting Mosquitto on :1884..."
     cat > "$RUNTIME/mosquitto-dev.conf" <<'EOF'
-listener 1884 127.0.0.1
+listener 1884 0.0.0.0
 allow_anonymous true
 persistence false
 log_dest file /home/DUMMY/aq-runtime/mosquitto.log
@@ -70,17 +70,22 @@ EOF
 fi
 
 # --- 3. Backend -------------------------------------------------------------
-if is_up 8080; then
-    log "Backend already running on :8080"
+if is_up 18080; then
+    log "Backend already running on :18080"
 else
-    log "Starting backend (takes ~15s first compile)..."
+    JAR="$ROOT/backend/target/air-quality-twin-0.0.1-SNAPSHOT.jar"
+    if [ ! -f "$JAR" ] || find "$ROOT/backend/src" -newer "$JAR" -print -quit | grep -q .; then
+        log "Building backend jar (source changed / not built yet, ~20s)..."
+        (cd "$ROOT/backend" && ./mvnw -q -DskipTests package >/dev/null)
+    fi
+    log "Starting backend jar (single JVM, capped heap)..."
     (
-        cd "$ROOT/backend"
         setsid env \
             DB_HOST=localhost DB_PORT=5433 DB_NAME=airquality \
             DB_USER=aq_user DB_PASSWORD=aq_pass \
-            MQTT_BROKER=tcp://localhost:1884 SENSOR_MODE=simulator \
-            nohup ./mvnw spring-boot:run > "$RUNTIME/backend.log" 2>&1 < /dev/null &
+            MQTT_BROKER=tcp://localhost:1884 SENSOR_MODE=${SENSOR_MODE:-simulator} \
+            SERVER_PORT=18080 \
+            nohup java -Xms64m -Xmx400m -jar "$JAR" > "$RUNTIME/backend.log" 2>&1 < /dev/null &
     )
 fi
 
@@ -100,7 +105,7 @@ fi
 log "Waiting for services to become ready..."
 for i in $(seq 1 60); do
     ok=1
-    curl -sf http://localhost:8080/actuator/health >/dev/null 2>&1 || ok=0
+    curl -sf http://localhost:18080/actuator/health >/dev/null 2>&1 || ok=0
     curl -sf http://localhost:5173 >/dev/null 2>&1 || ok=0
     [ "$ok" = "1" ] && break
     sleep 2
@@ -109,7 +114,7 @@ done
 if [ "$ok" = "1" ]; then
     log "ALL SERVICES UP:"
     echo "    Dashboard : http://localhost:5173"
-    echo "    API       : http://localhost:8080/api/rooms"
+    echo "    API       : http://localhost:18080/api/rooms"
     echo "    Logs      : ~/aq-runtime/backend.log, ~/aq-runtime/frontend.log"
 else
     log "Something did not come up. Check logs in ~/aq-runtime/"

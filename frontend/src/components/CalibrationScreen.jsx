@@ -46,8 +46,6 @@ export default function CalibrationScreen({ rooms, user }) {
           Metric
           <select value={metric} onChange={(e) => setMetric(e.target.value)}>
             <option value="co2">CO2</option>
-            <option value="pm25">PM2.5</option>
-            <option value="pm10">PM10</option>
           </select>
         </label>
         <label>
