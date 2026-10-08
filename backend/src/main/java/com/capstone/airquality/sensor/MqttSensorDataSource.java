@@ -148,6 +148,8 @@ public class MqttSensorDataSource implements SensorDataSource {
         return switch (metric) {
             case "co2" -> "ppm";
             case "occupancy" -> "persons";
+            case "temperature" -> "celsius";
+            case "humidity" -> "percent";
             default -> "raw";
         };
     }

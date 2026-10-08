@@ -44,6 +44,8 @@ public class RoomTwinService {
         RoomState state = stateFor(roomId);
         switch (metric) {
             case "co2" -> state.setCo2Ppm(value, at);
+            case "temperature" -> state.setTemperature(value, at);
+            case "humidity" -> state.setHumidity(value, at);
             case "occupancy" -> state.setOccupants((int) Math.round(value), at);
             default -> {
             }

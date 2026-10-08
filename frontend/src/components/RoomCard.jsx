@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, Area, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts'
 
 export default function RoomCard({ room, points, canControl, onVentilation, onOccupancy }) {
   const [occDraft, setOccDraft] = useState('')
@@ -41,6 +41,14 @@ export default function RoomCard({ room, points, canControl, onVentilation, onOc
           <span className="dt-value">{room.co2Ppm != null ? room.co2Ppm : '—'}<small>ppm</small></span>
           <span className={`dt-ta dt-${status.toLowerCase()}`}>{statusTag}</span>
         </div>
+        <div className="dtile dt-temp">
+          <span className="dt-label">Temperature</span>
+          <span className="dt-value">{room.temperature != null ? room.temperature : '—'}<small>°C</small></span>
+        </div>
+        <div className="dtile dt-hum">
+          <span className="dt-label">Humidity</span>
+          <span className="dt-value">{room.humidity != null ? room.humidity : '—'}<small>%</small></span>
+        </div>
         <div className="dtile dt-vent">
           <span className="dt-label">Ventilation</span>
           <span className={`dt-value dt-vent-on ${room.ventilationOn ? 'on' : ''}`}>{room.ventilationOn ? 'ON' : 'OFF'}</span>
@@ -59,11 +67,18 @@ export default function RoomCard({ room, points, canControl, onVentilation, onOc
         <div className="chart-box">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 6, right: 10, bottom: 0, left: -20 }}>
+              <defs>
+                <linearGradient id="co2Fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#d5dbe2" vertical={false} />
               <XAxis dataKey="time" tick={{ fontSize: 9 }} tickCount={4} axisLine={false} tickLine={false} />
               <YAxis domain={[350, 'auto']} tick={{ fontSize: 9 }} axisLine={false} tickLine={false} width={40} />
               <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-              <Line type="monotone" dataKey="co2" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Area type="monotone" dataKey="co2" stroke="none" fill="url(#co2Fill)" isAnimationActive={false} />
+              <Line type="monotone" dataKey="co2" stroke="#2563eb" strokeWidth={2.5} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>

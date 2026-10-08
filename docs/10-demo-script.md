@@ -51,7 +51,7 @@ Postgres has 7 tables via the data (or a quick DB listing).
 4. **Implementation** — modules map to features; key code locations.
 5. **Innovation layer** — digital twin state model, projection, what-if, replay
    (06-baseline-comparison for the "why").
-6. **Engineering evidence** — 22 tests, CI, Docker, OpenAPI, git history
+6. **Engineering evidence** — 21 tests, CI, Docker, OpenAPI, git history
    (04-engineering-evidence).
 7. **Evaluation** — calibration, latency, alert precision, usability
    (05-evaluation-dossier) + honest hardware caveat.

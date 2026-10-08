@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Client } from '@stomp/stompjs'
 import { fetchRooms, fetchReadings, setVentilation, setOccupancy, login, logout, setAuthToken, enterRoom, createRoom } from './api'
 import { playAlertBeep } from './sound'
 import LoginGate from './components/LoginGate.jsx'
@@ -43,6 +44,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const seeded = useRef(false)
   const roomsRef = useRef([])
+  const lastPointAt = useRef({})   // per-room throttle for chart appends
   const [showAdmin, setShowAdmin] = useState(false)
   const [showInnovation, setShowInnovation] = useState(false)
 
@@ -53,20 +55,29 @@ export default function App() {
     if (!user?.roomId) return
     const entered = (user.roomId || '').trim().toLowerCase()
 
+    // ONE chart point per room per ~1.5s, no matter how many triggers fire.
+    // The backend broadcasts the full twin state on EVERY ingest, so co2,
+    // temp AND humidity messages each carry co2Ppm — plus polling adds its
+    // own copy. Without this throttle the chart got 3-4 duplicate points per
+    // 2s reading, which looked like "value frozen, then a sudden jump".
+    function pushPoint(roomId, co2) {
+      const now = Date.now()
+      if (now - (lastPointAt.current[roomId] || 0) < 1500) return
+      lastPointAt.current[roomId] = now
+      setPoints((prev) => {
+        const arr = [...(prev[roomId] || [])]
+        arr.push({ time: new Date().toLocaleTimeString(), co2 })
+        while (arr.length > MAX_POINTS) arr.shift()
+        return { ...prev, [roomId]: arr }
+      })
+    }
+
     function absorb(data) {
       roomsRef.current = data
       setRooms(data)
-      setPoints((prev) => {
-        const next = { ...prev }
-        for (const r of data) {
-          if (r.co2Ppm == null) continue
-          const arr = [...(next[r.roomId] || [])]
-          arr.push({ time: new Date().toLocaleTimeString(), co2: r.co2Ppm })
-          while (arr.length > MAX_POINTS) arr.shift()
-          next[r.roomId] = arr
-        }
-        return next
-      })
+      for (const r of data) {
+        if (r.co2Ppm != null) pushPoint(r.roomId, r.co2Ppm)
+      }
     }
 
     function load() {
@@ -117,13 +128,52 @@ export default function App() {
     }
 
     load()
-    const timer = setInterval(load, 5000)
-    return () => clearInterval(timer)
+    const timer = setInterval(load, 2000) // faster polling: ≤2s worst-case lag
+
+    // Real-time live push (the WebSocket arrow in the data-flow diagram):
+    // the backend broadcasts /topic/rooms/{id} the moment a reading is
+    // ingested, so the dashboard updates in milliseconds instead of waiting
+    // for the next poll tick. Polling stays as a fallback.
+    function applyLive(snap) {
+      if (!snap || snap.co2Ppm == null) return
+      const roomId = snap.roomId
+      const prev = (roomsRef.current || []).find((r) => r.roomId === roomId)
+      const merged = { ...(prev || {}), ...snap, roomName: prev?.roomName || snap.roomName }
+      const nextRooms = roomsRef.current
+        .map((r) => (r.roomId === roomId ? merged : r))
+        .filter(Boolean)
+      if (!nextRooms.some((r) => r.roomId === roomId)) nextRooms.push(merged)
+      roomsRef.current = nextRooms
+      setRooms(nextRooms)
+      pushPoint(roomId, snap.co2Ppm)
+    }
+
+    const ws = new Client({
+      brokerURL: `ws://${window.location.host}/ws`,
+      reconnectDelay: 3000,
+      onConnect: () => {
+        ws.subscribe(`/topic/rooms/${entered}`, (msg) => {
+          try {
+            applyLive(JSON.parse(msg.body))
+          } catch {
+            /* ignore malformed push */
+          }
+        })
+      },
+    })
+    ws.activate()
+
+    return () => {
+      clearInterval(timer)
+      ws.deactivate()
+    }
   }, [user])
 
   const pageStatus = worstStatus(rooms).toLowerCase()
   const prevStatus = useRef('ok')
   useEffect(() => {
+    // Alert aate hi ek baar beep (bilkul original behavior):
+    // sirf jab status 'ok'->'alert' hota hai tab bajti hai, repeat nahi.
     if (pageStatus === 'alert' && prevStatus.current !== 'alert') {
       playAlertBeep()
     }

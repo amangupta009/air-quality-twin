@@ -14,10 +14,14 @@ public class RoomState {
     private final String roomId;
 
     private Double co2Ppm;
+    private Double temperature;
+    private Double humidity;
     private Integer occupants;
     private boolean ventilationOn;
 
     private Instant co2UpdatedAt;
+    private Instant temperatureUpdatedAt;
+    private Instant humidityUpdatedAt;
     private Instant occupancyUpdatedAt;
     private Instant ventilationChangedAt;
 
@@ -41,6 +45,24 @@ public class RoomState {
         this.co2UpdatedAt = at;
     }
 
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Double temperature, Instant at) {
+        this.temperature = temperature;
+        this.temperatureUpdatedAt = at;
+    }
+
+    public Double getHumidity() {
+        return humidity;
+    }
+
+    public void setHumidity(Double humidity, Instant at) {
+        this.humidity = humidity;
+        this.humidityUpdatedAt = at;
+    }
+
     public Integer getOccupants() {
         return occupants;
     }
@@ -61,6 +83,12 @@ public class RoomState {
 
     public Instant getLastUpdate() {
         Instant latest = co2UpdatedAt;
+        if (temperatureUpdatedAt != null && (latest == null || temperatureUpdatedAt.isAfter(latest))) {
+            latest = temperatureUpdatedAt;
+        }
+        if (humidityUpdatedAt != null && (latest == null || humidityUpdatedAt.isAfter(latest))) {
+            latest = humidityUpdatedAt;
+        }
         if (occupancyUpdatedAt != null && (latest == null || occupancyUpdatedAt.isAfter(latest))) {
             latest = occupancyUpdatedAt;
         }

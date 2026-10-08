@@ -80,15 +80,18 @@ public class ReadingIngestService implements SensorReadingListener {
             handleOccupancy(reading, calibrated, at);
         } else {
             handleMeasurement(reading, calibrated, at);
-            // Single physical sensor setup: mirror the live CO2 measurement to
-            // every registered room so any room you enter shows a live reading.
-            if ("co2".equals(reading.metric())) {
+            // Single physical sensor setup: mirror live environmental readings
+            // (CO2, temperature, humidity) to every registered room so any room
+            // you enter shows live values.
+            if ("co2".equals(reading.metric())
+                    || "temperature".equals(reading.metric())
+                    || "humidity".equals(reading.metric())) {
                 for (Room room : roomRepo.findAll()) {
                     if (room.getId().equals(reading.roomId())) {
                         continue;
                     }
                     handleMeasurement(
-                            new SensorReading(room.getId(), "co2", reading.value(), reading.unit(), at),
+                            new SensorReading(room.getId(), reading.metric(), reading.value(), reading.unit(), at),
                             calibrated,
                             at);
                     broadcastTwinState(room.getId());
@@ -170,6 +173,8 @@ public class ReadingIngestService implements SensorReadingListener {
                 roomId,
                 null,
                 state.getCo2Ppm(),
+                state.getTemperature(),
+                state.getHumidity(),
                 state.getOccupants(),
                 state.isVentilationOn(),
                 twinService.statusOf(roomId).toString(),

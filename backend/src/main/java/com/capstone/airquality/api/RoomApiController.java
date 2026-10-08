@@ -286,6 +286,8 @@ public class RoomApiController {
                 room.getId(),
                 room.getName(),
                 state.getCo2Ppm(),
+                state.getTemperature(),
+                state.getHumidity(),
                 state.getOccupants(),
                 state.isVentilationOn(),
                 twinService.statusOf(room.getId()).toString(),

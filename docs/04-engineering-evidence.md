@@ -44,7 +44,7 @@ Planned (or applied) PR structure mapped to commits:
 
 ## 3. Test Evidence
 
-Run: `backend: ./mvnw test` → **BUILD SUCCESS, 22 tests, 0 failures.**
+Run: `backend: ./mvnw test` → **BUILD SUCCESS, 21 tests, 0 failures.**
 
 | Class | Tests | Covers |
 |---|---|---|
@@ -81,11 +81,11 @@ Frontend: `npm run build` succeeds (0 vulnerabilities from `npm ci`);
 - CO2 projection model exposed via API + UI.
 
 ### v0.4.0 — Delivery (9ec8ca7, 16d8ff9)
-- 22 automated tests; CI/CD; Docker images; docker-compose; OpenAPI v1.0.
+- 21 automated tests; CI/CD; Docker images; docker-compose; OpenAPI v1.0.
 
 ## 6. Acceptance Checklist
 
-- [x] Backend builds; 22 tests pass.
+- [x] Backend builds; 21 tests pass.
 - [x] Live status reflects occupancy-aware model.
 - [x] Roles enforced (viewer read-only, FM acts, ADMIN admins).
 - [x] All data persisted and replayable.

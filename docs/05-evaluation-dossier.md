@@ -80,7 +80,7 @@ deliverable; heuristic pass is done.
 
 ```bash
 # Backend contracts
-cd backend && ./mvnw test          # 22 tests, BUILD SUCCESS
+cd backend && ./mvnw test          # 21 tests, BUILD SUCCESS
 # Frontend
 cd frontend && npm ci && npm run build   # dist/, no vulns
 # Full stack (requires Docker daemon)
